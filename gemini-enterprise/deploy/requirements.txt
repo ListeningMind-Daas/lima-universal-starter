@@ -1,0 +1,4 @@
+google-adk==2.11.0
+google-cloud-aiplatform[agent_engines]==2.4.0
+google-cloud-storage
+google-cloud-secret-manager

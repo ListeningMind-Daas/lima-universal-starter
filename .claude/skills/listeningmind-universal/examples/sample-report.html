@@ -1,0 +1,235 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>전기자전거 한국 시장 세그먼트 리포트</title>
+<style>
+:root{
+  color-scheme: light;
+  --paper:#fcfcfb; --card:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --ink3:#8a887f;
+  --line:#e7e6e0; --accent:#2a78d6; --accent-soft:#eaf2fc;
+  --s-1:#2a78d6; --s-2:#eb6834; --s-3:#1baf7a;
+  --warn-bg:#faf6ec; --warn-bd:#e3d9b8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --paper:#161615; --card:#1e1e1c; --ink:#ffffff; --ink2:#c3c2b7; --ink3:#8f8e85;
+    --line:#33332f; --accent:#3987e5; --accent-soft:#1c2a3d;
+    --s-1:#3987e5; --s-2:#d95926; --s-3:#199e70;
+    --warn-bg:#26231a; --warn-bd:#4a4430;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:#161615; --card:#1e1e1c; --ink:#ffffff; --ink2:#c3c2b7; --ink3:#8f8e85;
+  --line:#33332f; --accent:#3987e5; --accent-soft:#1c2a3d;
+  --s-1:#3987e5; --s-2:#d95926; --s-3:#199e70;
+  --warn-bg:#26231a; --warn-bd:#4a4430;
+}
+body{background:var(--paper);color:var(--ink);
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  line-height:1.6;margin:0;padding:0 20px 80px;}
+.wrap{max-width:960px;margin:0 auto;}
+.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:700;margin:48px 0 8px;}
+h1{font-size:32px;line-height:1.25;margin:0 0 6px;text-wrap:balance;font-weight:800;}
+.sub{color:var(--ink2);font-size:14.5px;margin:0 0 4px;}
+.owner{display:inline-block;margin-top:10px;padding:4px 12px;border:1px solid var(--accent);border-radius:20px;
+  font-size:12.5px;font-weight:700;color:var(--accent);}
+.lede{font-size:15.5px;color:var(--ink);max-width:68ch;margin:16px 0 0;}
+.lede b{color:var(--accent);}
+.sc{display:inline-block;font-size:10.5px;font-weight:750;padding:1px 7px;border-radius:4px;margin-right:5px;vertical-align:1px;}
+.sc-l{background:var(--accent-soft);color:var(--accent);}
+.sc-m{background:var(--line);color:var(--ink2);}
+.sc-s{background:transparent;border:1px solid var(--line);color:var(--ink3);}
+h2{font-size:20px;margin:0 0 4px;font-weight:750;}
+.shead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.shead .no{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:12px;color:var(--ink3);}
+.shead .hint{margin-left:auto;font-size:12px;color:var(--ink3);}
+.badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:20px;vertical-align:2px;}
+.b-measured{background:var(--accent-soft);color:var(--accent);}
+.b-derived{background:var(--line);color:var(--ink2);}
+.banner{margin:28px 0 0;padding:12px 16px;border:1px solid var(--warn-bd);background:var(--warn-bg);border-radius:8px;font-size:13.5px;color:var(--ink2);}
+.banner b{color:var(--ink);}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:24px 0 0;}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;}
+.kpi .l{font-size:12px;color:var(--ink3);letter-spacing:.04em;font-weight:600;}
+.kpi .v{font-size:27px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0 0;line-height:1.2;}
+.kpi .d{font-size:12.5px;color:var(--ink2);margin-top:2px;}
+.up{color:var(--s-3);font-weight:700;}
+.down{color:var(--s-2);font-weight:700;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin:20px 0 0;}
+.card .note{font-size:12.5px;color:var(--ink3);margin-top:10px;}
+.chartbox{overflow-x:auto;margin-top:14px;}
+svg{display:block;}
+svg text{font-family:inherit;font-variant-numeric:tabular-nums;}
+.grid6{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px;}
+.dcard{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--paper);}
+.dcard h3{margin:0 0 6px;font-size:14px;letter-spacing:.03em;}
+.dcard h3 span{color:var(--ink3);font-weight:600;font-size:12px;margin-left:6px;}
+.dcard ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink2);}
+.dcard li{margin:3px 0;}
+.dcard.noise{opacity:.65;border-style:dashed;}
+.dcard .flag{font-size:10.5px;color:var(--s-2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px;}
+.bar-rows{display:flex;flex-direction:column;margin-top:14px;}
+.bar-row{display:grid;grid-template-columns:150px 1fr 90px 70px;align-items:center;gap:10px;padding:6px 0;}
+.bar-row.head{padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:4px;font-size:11px;color:var(--ink3);}
+.bar-row .name{font-size:12.5px;font-weight:650;line-height:1.3;color:var(--ink);}
+.bar-row .name .cat{display:block;font-weight:400;font-size:10px;color:var(--ink3);}
+.bar-row .name .cat.channel{color:var(--s-2);}
+.bar-track{background:var(--paper);border-radius:3px;height:16px;position:relative;overflow:hidden;border:1px solid var(--line);}
+.bar-fill{height:100%;background:var(--s-1);border-radius:3px 0 0 3px;}
+.bar-fill.channel{background:var(--s-2);}
+.bar-fill.generic{background:var(--ink3);opacity:.45;}
+.bar-row .share{font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink2);text-align:right;}
+.bar-row .trend{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;color:var(--ink3);}
+.bar-row .trend.up{color:var(--s-3);}
+.bar-row .trend.down{color:var(--s-2);}
+.flow{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:stretch;}
+.stage{flex:1 1 160px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--paper);min-width:150px;}
+.stage .n{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.1em;}
+.stage .t{font-weight:750;font-size:14.5px;margin:2px 0 4px;}
+.stage .q{font-size:12.5px;color:var(--ink2);}
+.stage .q code{background:var(--line);border-radius:4px;padding:0 5px;font-size:11.5px;}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:14px;}
+th{text-align:left;font-size:12px;color:var(--ink3);letter-spacing:.05em;border-bottom:2px solid var(--line);padding:8px 10px;}
+td{border-bottom:1px solid var(--line);padding:9px 10px;vertical-align:top;color:var(--ink2);}
+td:first-child{color:var(--ink);font-weight:650;}
+tr.group td{border-bottom:none;padding:16px 10px 4px;font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.05em;}
+tr.group.g-now td{color:var(--s-3);}
+tr.group.g-watch td{color:var(--accent);}
+tr.group.g-risk td{color:var(--s-2);}
+.veil{display:block;font-size:11.5px;color:var(--ink3);margin-top:3px;}
+.legend{display:inline-flex;align-items:center;gap:4px;margin-right:10px;}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+.foot{margin-top:36px;font-size:12.5px;color:var(--ink3);border-top:1px solid var(--line);padding-top:18px;}
+.foot b{color:var(--ink2);}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:4px 9px;border-radius:6px;opacity:0;transition:opacity .12s;font-variant-numeric:tabular-nums;z-index:9;}
+@media (prefers-reduced-motion: reduce){.tip{transition:none;}}
+@media (max-width:640px){.bar-row{grid-template-columns:110px 1fr 64px 56px;} h1{font-size:26px;}}
+</style>
+
+<div class="wrap">
+  <!-- ═══ 마스트헤드 (항상) ═══ -->
+  <div class="eyebrow">LISTENINGMIND · E-BIKE · KR MARKET INTELLIGENCE</div>
+  <h1>전기자전거 한국 시장 세그먼트 리포트</h1>
+  <p class="sub">검색 행동 데이터 기반 수요·경쟁·결정구조·여정 분석 · 데이터 기간 2024-08 ~ 2026-07 · 조회 시점 2026-08-22 (gl=kr)</p>
+  <p class="sub">keyword_info(412개) · intent_finder(3시드) · cluster_finder(1,180노드) · path_finder(150경로)</p>
+  <span class="owner">실행 주체 · 중립(시장 조사) — 샘플 데이터</span>
+
+  <!-- ═══ 리드 (항상) — 실제 수행한 잡·커넥터만 1~2문장 ═══ -->
+  <p class="lede"><b>수요·트렌드</b>(keyword_info로 24개월 추이), <b>경쟁·브랜드</b>(브랜드+모델 합산 SoV), <b>니즈·구매요인</b>(군집→6층), <b>검색여정</b>(150경로)을 결합해 전기자전거 세그먼트를 진단했습니다. ※ 이 파일은 렌더러 검증용 <b>가상 샘플</b>이며 실측값이 아닙니다. 모든 수치는 <b>MEASURED</b>(도구 응답값) · <b>DERIVED</b>(계산·해석값)로 구분 표기합니다.</p>
+
+  <!-- ═══ 준비도 배너 (항상 · readiness-gate.md §4) ═══ -->
+  <div class="banner"><b>분석 준비도: READY WITH LIMITS</b> — ① 롱테일 412개 중 198개(48%)만 실측 볼륨 — 나머지는 언어 근거로만 ② 동의어군(전기자전거=전동자전거=e-bike) 볼륨 dedup 후 합산 ③ 쿠팡·네이버쇼핑 허브 노드는 총량에서 제외 ④ 검색은 관심 신호이며 판매·등록 대수가 아님. 이 경계 안에서만 결론을 제시합니다.</div>
+
+  <!-- ═══ KPI 4장 (항상 · 측정값 우선) ═══ -->
+  <div class="kpis">
+    <div class="kpi"><div class="l">월평균 검색량 (dedup)</div><div class="v">184천</div><div class="d">시드군 합산 · 최근 12개월 (측정)</div></div>
+    <div class="kpi"><div class="l">YoY</div><div class="v up">+23%</div><div class="d">최근 12개월 vs 직전 12개월 (측정)</div></div>
+    <div class="kpi"><div class="l">시즌 진폭</div><div class="v">2.4×</div><div class="d">4~5월 피크 / 12~1월 저점 (파생)</div></div>
+    <div class="kpi"><div class="l">브랜드 지명 비중</div><div class="v">41%</div><div class="d">브랜드 별칭 매칭 쿼리 / 전체 (파생 · 근사)</div></div>
+  </div>
+
+  
+  <div class="card">
+    <div class="shead"><span class="no">01</span><h2>수요 트렌드·시즌성(Demand &amp; Seasonality)</h2><span class="badge b-measured">MEASURED</span><span class="hint">수요·트렌드 잡 · keyword_info(all)</span></div>
+    <p class="sub">전기자전거 월별 검색량 · 최근 24개월 (단위: 천 건)</p>
+    <div class="chartbox"><svg id="trend" viewBox="0 0 880 290" width="100%" role="img" aria-label="월별 검색량 추이"><text x="44" y="244.0" font-size="11" text-anchor="end" fill="var(--ink3)">0</text><line x1="50" x2="850" y1="240.0" y2="240.0" stroke="var(--line)" stroke-width="1"/><text x="44" y="134.0" font-size="11" text-anchor="end" fill="var(--ink3)">150</text><line x1="50" x2="850" y1="130.0" y2="130.0" stroke="var(--line)" stroke-width="1"/><text x="44" y="24.0" font-size="11" text-anchor="end" fill="var(--ink3)">300</text><line x1="50" x2="850" y1="20.0" y2="20.0" stroke="var(--line)" stroke-width="1"/><path d="M50.0,240 L50.0,130.0 L84.8,135.9 L119.6,146.1 L154.3,169.6 L189.1,182.8 L223.9,185.7 L258.7,172.5 L293.5,131.5 L328.3,86.0 L363.0,69.9 L397.8,89.7 L432.6,102.1 L467.4,114.6 L502.2,122.7 L537.0,138.1 L571.7,163.7 L606.5,179.9 L641.3,181.3 L676.1,165.9 L710.9,116.8 L745.7,59.6 L780.4,47.9 L815.2,72.8 L850.0,90.4 L850.0,240 Z" fill="var(--accent-soft)" opacity=".7"/><polyline points="50.0,130.0 84.8,135.9 119.6,146.1 154.3,169.6 189.1,182.8 223.9,185.7 258.7,172.5 293.5,131.5 328.3,86.0 363.0,69.9 397.8,89.7 432.6,102.1 467.4,114.6 502.2,122.7 537.0,138.1 571.7,163.7 606.5,179.9 641.3,181.3 676.1,165.9 710.9,116.8 745.7,59.6 780.4,47.9 815.2,72.8 850.0,90.4" fill="none" stroke="var(--s-1)" stroke-width="2.2" stroke-linejoin="round"/><circle cx="780.4" cy="47.9" r="4" fill="var(--s-1)"/><text x="780.4" y="38.9" font-size="11" text-anchor="middle" fill="var(--ink)">피크 2026-05 · 262</text><circle cx="223.9" cy="185.7" r="3.5" fill="var(--s-2)"/><text x="50.0" y="262" font-size="11" text-anchor="middle" fill="var(--ink3)">2024-08</text><text x="189.1" y="262" font-size="11" text-anchor="middle" fill="var(--ink3)">2024-12</text><text x="328.3" y="262" font-size="11" text-anchor="middle" fill="var(--ink3)">2025-04</text><text x="467.4" y="262" font-size="11" text-anchor="middle" fill="var(--ink3)">2025-08</text><text x="606.5" y="262" font-size="11" text-anchor="middle" fill="var(--ink3)">2025-12</text><text x="745.7" y="262" font-size="11" text-anchor="middle" fill="var(--ink3)">2026-04</text><text x="850.0" y="262" font-size="11" text-anchor="middle" fill="var(--ink3)">2026-07</text><line id="xh" x1="0" x2="0" y1="20" y2="240" stroke="var(--ink3)" stroke-dasharray="3 3" style="opacity:0"/><rect id="hover" x="50" y="20" width="800" height="220" fill="transparent"/></svg></div>
+    <p class="note">읽기 — ① 4~5월 피크가 2년 연속 — 봄 시즌 진입이 구조적 ② 2026년 피크가 전년 대비 +13% ③ 12~1월 저점은 역대 최저권(차트 범위 밖 2023년 저점과 유사). 검색량 기준이며 판매량이 아닙니다.</p>
+  </div>
+
+  
+  <div class="card">
+    <div class="shead"><span class="no">02</span><h2>브랜드별 검색 점유율(SoV)</h2><span class="badge b-measured">MEASURED</span><span class="hint">경쟁·브랜드 잡 · cluster_finder(엔티티) + intent_finder(모델명) + keyword_info(9그룹)</span></div>
+    <p class="sub">브랜드 결합 쿼리군 월평균 검색량 · SoV는 <b>검색량 기준 근사</b>이며 판매 점유율이 아님 · 브랜드 1그룹 + 모델 2~4그룹 합산</p>
+    <div class="bar-rows">
+      <div class="bar-row head"><span></span><span>브랜드검색 대비 비중</span><span style="text-align:right;">비중(근사)</span><span style="text-align:right;">3개월 추세</span></div>
+      <div class="bar-row"><span class="name">삼천리자전거<small class="cat">제조사 · 브랜드1+모델3</small></span><div class="bar-track"><div class="bar-fill" style="width:100.0%"></div></div><span class="share">34%</span><span class="trend up">▲6%</span></div>
+      <div class="bar-row"><span class="name">알톤<small class="cat">제조사 · 브랜드1+모델2</small></span><div class="bar-track"><div class="bar-fill" style="width:64.7%"></div></div><span class="share">22%</span><span class="trend down">▼2%</span></div>
+      <div class="bar-row"><span class="name">모토벨로<small class="cat">제조사 · 브랜드1+모델2</small></span><div class="bar-track"><div class="bar-fill" style="width:44.1%"></div></div><span class="share">15%</span><span class="trend up">▲11%</span></div>
+      <div class="bar-row"><span class="name">Generic(무브랜드)<small class="cat">브랜드 별칭 미매칭</small></span><div class="bar-track"><div class="bar-fill generic" style="width:85.3%"></div></div><span class="share">29%</span><span class="trend">0%</span></div>
+      <div class="bar-row"><span class="name">쿠팡<small class="cat channel">판매·중개 채널</small></span><div class="bar-track"><div class="bar-fill channel" style="width:0.0%"></div></div><span class="share">—</span><span class="trend up">▲4%</span></div>
+    </div>
+    <p class="note">
+      <span class="legend"><i style="background:var(--s-1);"></i>제조사·브랜드</span>
+      <span class="legend"><i style="background:var(--s-2);"></i>판매·중개 채널(브랜드 아님 — 분모 제외)</span>
+      <span class="legend"><i style="background:var(--ink3);opacity:.45;"></i>Generic(무브랜드)</span><br>
+      DERIVED — 비중은 브랜드 별칭(약칭·영문·서브브랜드) 합산 기준 근사. 매칭 별칭: 삼천리·삼천리자전거·팬텀 / 알톤·alton·니모 / 모토벨로·motovelo·XT. 단독 기업명 쿼리("삼천리")는 카테고리 의도 불명으로 제외(가정).</p>
+  </div>
+  
+
+  
+  <div class="card">
+    <div class="shead"><span class="no">03</span><h2>소비자 결정구조(CEP·KBF·RTB)</h2><span class="badge b-derived">DERIVED</span><span class="hint">니즈·구매요인 잡 · cluster_finder(군집 14개) + keyword_info(볼륨 검증)</span></div>
+    <p class="sub">연관 쿼리 412개 + 인식 군집 14개 + 여정 150경로 · 검색 언어 기반 해석</p>
+    <div class="grid6">
+      <div class="dcard"><h3>CEP <span>카테고리 진입 상황</span></h3><ul><li>출퇴근 전환 — "출퇴근 전기자전거" 8,100/월 [실측]</li><li>자전거 도로·한강 라이딩 시즌 진입 — 4~5월 결합 쿼리 급증 [실측]</li><li>배달·라이더 업무용 — "배달용 전기자전거" 2,900/월 [실측]</li></ul></div>
+      <div class="dcard"><h3>Nano Intent <span>원하는 해결 방식</span></h3><ul><li>"언덕을 힘 안 들이고" — 모터 토크·PAS 방식 쿼리</li><li>"접어서 지하철·차에" — 폴딩 결합 쿼리 5,400/월</li></ul></div>
+      <div class="dcard"><h3>KBF <span>구매 결정 요인</span></h3><ul><li>주행거리(배터리 용량) · 가격대(50~100만) · 무게 · 모터 위치 · A/S망 — 근거 쿼리 병기</li><li>"전기자전거 추천 100만원대" 6,600/월</li></ul></div>
+      <div class="dcard"><h3>Constraint <span>제약(선행 필터)</span></h3><ul><li>예산 100만원 이하 · 엘리베이터/보관 공간 · 면허(스로틀 방식은 원동기 면허) · 자전거도로 통행 기준(PAS 25km/h)</li></ul></div>
+      <div class="dcard"><h3>Avoidance <span>회피 요인</span></h3><ul><li>배터리 화재·수명 우려 — "전기자전거 배터리 화재" 1,900/월 [실측]</li><li>도난 · 비 오는 날 고장 · A/S 지연 — 우려 신호이며 제품 결함 진술 아님</li></ul></div>
+      <div class="dcard"><h3>RTB <span>신뢰 체계</span></h3><ul><li>KC 인증·배터리 셀 제조사 표기 · 유튜브 장기 주행 리뷰 · 커뮤니티(자전거 갤러리) 후기 — 검증 관문</li></ul></div>
+      <div class="dcard noise"><span class="flag">해석 보류</span><h3>약한 연관 노드</h3><ul><li>"전동킥보드" 군집 — 인접 카테고리 동시출현, 본 세그먼트 총량에서 제외</li></ul></div>
+    </div>
+    <p class="note">카드 내 항목은 검색합 볼륨 내림차순(볼륨 미측정 항목은 뒤로, 해석 보류 카드는 항상 맨 뒤). 회피 요인은 소비자 우려 신호이며 제품·서비스 성능 진술이 아닙니다.</p>
+  </div>
+
+  
+  <div class="card">
+    <div class="shead"><span class="no">04</span><h2>검색 여정(CDJ)</h2><span class="badge b-measured">MEASURED</span><span class="hint">검색여정 잡 · path_finder(150경로)</span></div>
+    <p class="sub">path_finder 150경로의 집계 구조 · "전기자전거 추천"이 중앙 허브</p>
+    <div class="flow">
+      <div class="stage"><div class="n">STAGE 1</div><div class="t">진입</div><div class="q"><code>출퇴근 전기자전거</code> → 상황 결합 쿼리에서 카테고리 헤드텀으로 (도달률 62%)</div></div>
+      <div class="stage"><div class="n">STAGE 2</div><div class="t">비교 관문</div><div class="q"><code>전기자전거 추천</code> → 브랜드·가격대 분기 — 삼천리 팬텀 vs 알톤 니모</div></div>
+      <div class="stage"><div class="n">STAGE 3</div><div class="t">검증</div><div class="q"><code>전기자전거 배터리 화재</code> → 리뷰·커뮤니티 경유 후 복귀 (마찰 노드)</div></div>
+      <div class="stage"><div class="n">STAGE 4</div><div class="t">행동</div><div class="q"><code>전기자전거 보조금</code> → 지자체 보조금 확인 → 구매 채널</div></div>
+    </div>
+    <p class="note">마찰 지점 — "배터리 화재" 노드에서 경로 18%가 인접 카테고리(일반 자전거)로 이탈 [실측]. 경로는 집계 그래프이며 개인 이동이 아닙니다.</p>
+  </div>
+  
+
+  
+  <div class="card">
+    <div class="shead"><span class="no">05</span><h2>기회 백로그(Opportunity Backlog) — 중립 관점</h2><span class="badge b-derived">DERIVED</span><span class="hint">수요·경쟁·결정구조·여정 통합 · 의사결정 지원 참고용</span></div>
+    <p class="sub">임팩트 스케일(근거 쿼리군 연환산 검색량): <span class="sc sc-l">L</span>10만+/년 · <span class="sc sc-m">M</span>1만~10만 · <span class="sc sc-s">S</span>1만 미만</p>
+    <table>
+      <thead><tr><th>기회</th><th>근거 (측정)</th><th>제안 액션</th></tr></thead>
+      <tbody>
+        <tr class="group g-now"><td colspan="3">지금 대응할 변화</td></tr>
+        <tr><td>봄 시즌 진입 콘텐츠 선점</td><td><span class="sc sc-l">L</span>4~5월 피크 2년 연속, 2026 +13% [실측]</td><td>3월 초 비교·추천 콘텐츠 발행 · 보조금 가이드 결합<span class="veil">시즌과 검색 상승의 인과는 동향으로만 서술</span></td></tr>
+        <tr class="group g-watch"><td colspan="3">계속 지켜볼 변화</td></tr>
+        <tr><td>모토벨로 상승</td><td><span class="sc sc-m">M</span>3개월 추세 ▲11% · 모델 쿼리 증가 [실측]</td><td>신모델 출시 동반 여부 확인 후 경쟁 대응</td></tr>
+        <tr class="group g-risk"><td colspan="3">위험 신호</td></tr>
+        <tr><td>배터리 안전 우려</td><td><span class="sc sc-m">M</span>"배터리 화재" 1,900/월 · 여정 이탈 18% [실측]</td><td>KC 인증·셀 제조사 명시 콘텐츠로 검증 관문 대응<span class="veil">⚠ 안전 관련 수치·사고 이력은 공식 발표만 인용</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  
+
+  <!-- ═══ 푸터 (항상 — 방법·크레딧 + 가드레일) ═══ -->
+  <div class="foot">
+    <b>방법·한계</b> — ListeningMind DaaS keyword_info·intent_finder·cluster_finder·path_finder, gl=kr, 조회 2026-08-22. 크레딧 실측: 이번 분석 소진 <b>(샘플)</b> (keyword_info 4,120 · intent_finder 690 · cluster_finder 59,150 · path_finder 6,850 — 가상) · 월간 누적 (샘플) (당월 누적 사용량 · 잔여 아님).<br><br>
+    <b>가드레일</b> — ① 검색은 관심 신호이며 실제 판매·계약·방문이 아님 ② 브랜드 점유는 검색량 기준 근사 ③ 이벤트·시즌과 검색 변화의 인과는 단정하지 않고 동향으로 서술 ④ 집계 검색 데이터만 사용 — 개인 추적·민감 속성 추정 없음 ⑤ 모든 수치는 실측/파생/가정/없음 라벨로 구분 ⑥ 안전·인증·보조금 수치는 공식 출처만 인용<br><br>
+    <b>데이터 사양·공백</b> — 성·연령 인구통계는 gl=kr 전용 사양(본 리포트 포함) · 오프라인 매장 방문·시승은 검색에 잡히지 않음.
+  </div>
+</div>
+
+
+<div class="tip" id="tip"></div>
+<script>
+(function(){
+  var months=["2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"];
+  var vals=[150, 142, 128, 96, 78, 74, 92, 148, 210, 232, 205, 188, 171, 160, 139, 104, 82, 80, 101, 168, 246, 262, 228, 204];
+  var unit="천 건";
+  var svg=document.getElementById('trend');if(!svg||!months.length)return;
+  var tip=document.getElementById('tip'),xh=document.getElementById('xh'),hv=document.getElementById('hover');
+  var n=months.length,x0=50,w=800;
+  hv.addEventListener('mousemove',function(e){
+    var r=svg.getBoundingClientRect();var sx=(e.clientX-r.left)*(880/r.width);
+    var i=Math.max(0,Math.min(n-1,Math.round((sx-x0)/(w/(n-1)))));
+    var px=x0+i*(w/(n-1));xh.setAttribute('x1',px);xh.setAttribute('x2',px);xh.style.opacity=1;
+    tip.textContent=months[i]+' · '+vals[i].toLocaleString()+unit;tip.style.opacity=1;
+    tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-28)+'px';});
+  hv.addEventListener('mouseleave',function(){tip.style.opacity=0;xh.style.opacity=0;});
+})();
+</script>
+

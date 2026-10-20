@@ -1,0 +1,31 @@
+class,label,aliases,note
+Brand,삼천리자전거,삼천리|삼천리 자전거|samchuly,× 삼천리·삼천리자전거 / ○ 팬텀(phantom) — 프로브 2026-08-22 수확
+SubBrand,팬텀,phantom|삼천리 팬텀,삼천리자전거 전기자전거 라인 — 단독 유지
+Brand,알톤,알톤스포츠|alton,× 알톤 / ○ 니모(nemo)·벤조 — 프로브 수확
+SubBrand,니모,nemo,알톤 전기자전거 라인
+Brand,모토벨로,motovelo,× 모토벨로 — 프로브 수확
+Brand,비아지오,viaggio,× 비아지오 — 프로브 수확 · 계열(삼천리 수입 브랜드 여부) 공식 확인 필요
+Brand,자이언트,giant,× 자이언트 — 글로벌 (e-bike 라인 결합형만)
+Brand,메리다,merida,× 메리다 — 글로벌
+Brand,스페셜라이즈드,specialized,× 스페셜라이즈드 — 글로벌 (터보 라인)
+Brand,브롬톤,brompton,× 브롬톤 — 폴딩
+Brand,샤오미,xiaomi|미지아,× 샤오미 — 동음 충돌 없음(전기자전거 결합형만)
+Brand,벤츠,mercedes|메르세데스,× 벤츠 — 라이선스 e-bike · 자동차 의도와 충돌 → 결합형만
+Brand,AU테크,au테크|au tech|에이유테크,× AU테크 — 프로브 수확
+Brand,나노휠,nanowheel,× 나노휠 — 프로브 수확
+Brand,레이윙,raywing,× 레이윙 — 프로브 수확
+Brand,스카닉,skanic,× 스카닉 — 프로브 수확
+Brand,이지베이션,easybation,× 이지베이션 — 프로브 수확
+Brand,디스커버리,discovery,× 디스커버리 — 방송 채널 동음 충돌 → 결합형만
+Brand,그라인드,grind,× 그라인드 — 프로브 수확 · 계열 확인 필요
+Brand,몬테리아,몬테 리아|monteria,× 몬테리아 — 프로브 수확
+Brand,부릉이,,× 부릉이 — 프로브 수확 · 계열 확인 필요
+Brand,퀄리,qualisports|퀄리스포츠,× 퀄리 — 프로브 수확
+Brand,타이탄,titan,× 타이탄 — 일반명사 충돌 → 결합형만
+Brand,스왑,swap,× swap — 프로브 수확 · 계열 확인 필요
+Channel,코스트코,costco,판매 채널 — SoV 분모 제외
+Channel,쿠팡,coupang,판매 채널 — SoV 분모 제외
+Noise,서경석 전기자전거,,인물(방송) 결합 — 브랜드 아님 · 총량 제외
+Noise,전현무 전기자전거,,인물(방송) 결합 — 브랜드 아님 · 총량 제외
+Anchor,전기자전거 대여,전기자전거 렌탈|안성팜랜드 전동자전거|우도 전기자전거|대마도 전동 자전거|제주도 전기자전거,관광·대여 맥락 — 구매 수요와 분리 계상
+Brand,혼다,honda,× 혼다 — 실측 2,983/월 · 프로브 미수확(keyword_info에서 발견)

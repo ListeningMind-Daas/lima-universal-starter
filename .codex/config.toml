@@ -1,0 +1,9 @@
+# lima-universal 스타터 — 이 워크스페이스 전용 Codex 설정
+# Codex는 **신뢰한(trusted) 프로젝트**에서만 이 파일을 읽는다. 처음 열 때 신뢰 여부를 물으면 신뢰를 고른다.
+# 이 설정은 DaaS 주소만이 아니라 이 프로젝트에서 실행되는 모든 명령의 외부 네트워크를 연다.
+# 조직 정책상 네트워크를 상시로 열 수 없으면 아래 network_access 를 지우고, 호출할 때마다 승인하는 방식으로 쓴다.
+
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true   # ListeningMind DaaS API(REST) 호출에 필요 — 기본값은 false

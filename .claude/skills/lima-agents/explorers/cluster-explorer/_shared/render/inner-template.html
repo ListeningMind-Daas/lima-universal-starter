@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Cluster Graph · __CATEGORY__ · __GL__</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif; background: #f5f6f8; color: #333; overflow: hidden; }
+  .viz-container { display: flex; height: 100vh; width: 100vw; background: #fff; overflow: hidden; position: relative; }
+  .sidebar { width: 280px; padding: 20px; border-right: 1px solid #eef; overflow-y: auto; background: #fafbfc; transition: width 0.25s ease, padding 0.25s ease; flex-shrink: 0; }
+  .sidebar.collapsed { width: 0; padding: 0; overflow: hidden; border-right: none; }
+  /* 햄버거 메뉴 · 상단 헤더 좌측 */
+  .hamburger { display: flex; flex-direction: column; justify-content: center; gap: 3px; width: 26px; height: 26px; padding: 5px 4px; background: transparent; border: none; cursor: pointer; border-radius: 6px; transition: background 0.15s; flex-shrink: 0; }
+  .hamburger:hover { background: #f0f0f5; }
+  .hamburger span { display: block; height: 2px; background: #666; border-radius: 1px; transition: background 0.15s; }
+  .hamburger:hover span { background: #7c5ec4; }
+  .sidebar h3 { font-size: 11px; font-weight: 700; color: #999; margin-bottom: 10px; margin-top: 16px; text-transform: uppercase; letter-spacing: 0.8px; }
+  /* 사이드바 필터 리스트 · .com UI 스타일 · 세로 stack · 통일 너비 · 스크롤 */
+  .filter-list { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px; }
+  .filter-list::-webkit-scrollbar { width: 5px; }
+  .filter-list::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+  .filter-list::-webkit-scrollbar-track { background: transparent; }
+  .cluster-chip { display: flex; align-items: center; width: 100%; padding: 9px 14px; border-radius: 22px; font-size: 12.5px; cursor: pointer; transition: all 0.15s; user-select: none; font-weight: 500; background: #fff; border: 1.5px solid #eee; box-sizing: border-box; }
+  .cluster-chip:hover { border-color: #d5d5d5; }
+  .cluster-chip .letter { font-weight: 700; margin-right: 8px; font-size: 12px; flex-shrink: 0; }
+  .cluster-chip .cluster-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cluster-chip.disabled { opacity: 0.4; }
+  .hub-toggle { display: flex; align-items: center; width: 100%; padding: 10px 16px; margin-bottom: 8px; border-radius: 22px; font-size: 13px; cursor: pointer; transition: all 0.15s; user-select: none; font-weight: 600; background: #fff; color: #444; border: 1.5px solid #e0e0e0; box-sizing: border-box; }
+  .hub-toggle:hover { border-color: #c5c5c5; }
+  .hub-toggle.active { background: #7c5ec4; color: #fff; border-color: #7c5ec4; }
+  .kw-search { width: 100%; padding: 8px 12px; margin: 8px 0; border: 1px solid #e5e5e5; border-radius: 8px; font-size: 13px; background: #fff; }
+  .kw-search:focus { outline: none; border-color: #7c5ec4; }
+  .kw-list { margin-top: 8px; max-height: 380px; overflow-y: auto; font-size: 12px; }
+  .kw-item { padding: 6px 8px; cursor: pointer; border-radius: 6px; display: flex; justify-content: space-between; transition: background 0.15s; }
+  .kw-item:hover { background: #f0ebfa; }
+  .kw-item.hub { font-weight: 700; }
+  .kw-item .vol { color: #999; font-size: 11px; }
+  .canvas-wrap { flex: 1; position: relative; display: flex; flex-direction: column; }
+  .header-bar { padding: 12px 20px; border-bottom: 1px solid #eef; display: flex; align-items: center; gap: 12px; background: #fff; z-index: 10; }
+  .view-toggle { display: flex; background: #f0f0f5; border-radius: 8px; padding: 3px; }
+  .view-btn { padding: 6px 14px; border: none; background: transparent; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; color: #666; transition: all 0.15s; }
+  .view-btn.active { background: #fff; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-weight: 600; }
+  .header-bar h2 { font-size: 15px; font-weight: 600; color: #333; margin-left: auto; }
+  .header-bar .meta { font-size: 11px; color: #999; }
+  .content-area { flex: 1; position: relative; overflow: hidden; }
+  .graph-view, .card-view { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; }
+  .card-view { overflow-y: auto; padding: 20px; background: #fafbfc; display: none; }
+  .card-view.active { display: block; }
+  .graph-view { display: none; }
+  .graph-view.active { display: block; }
+  svg { width: 100%; height: 100%; }
+  .tooltip { position: fixed; padding: 10px 14px; background: rgba(50,50,50,0.94); color: #fff; border-radius: 8px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 100; line-height: 1.5; }
+  .tooltip .tt-title { font-weight: 600; margin-bottom: 3px; }
+  .tooltip .tt-meta { font-size: 11px; opacity: 0.9; }
+  .node { cursor: pointer; transition: stroke-width 0.15s; }
+  .link { stroke: #d5d5d5; stroke-opacity: 0.35; stroke-width: 0.4; }
+  .node-label { font-size: 11px; font-weight: 600; fill: #333; pointer-events: none; text-shadow: 0 0 3px rgba(255,255,255,0.95), 0 0 6px rgba(255,255,255,0.7); }
+  .node-label.hub { font-weight: 700; font-size: 12px; }
+  .legend { position: absolute; bottom: 12px; left: 20px; background: rgba(255,255,255,0.96); padding: 10px 14px; border-radius: 10px; font-size: 11px; color: #666; box-shadow: 0 2px 10px rgba(0,0,0,0.08); z-index: 5; }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .isolated-badge { position: absolute; top: 12px; right: 20px; background: #7c5ec4; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; z-index: 6; display: none; box-shadow: 0 2px 8px rgba(124,94,196,0.3); }
+  .isolated-badge:hover { background: #6a4fb5; }
+  /* 엔티티뷰 · CEP subgroups 스타일 그대로 사용 (내부 스크롤) · 별도 override 없음 */
+  /* 엔티티뷰 · 개별 엔티티 카드 (CEP 서브그룹과 유사) */
+  .entity-item { background: rgba(255,255,255,0.55); border-radius: 12px; overflow: hidden; transition: all 0.15s; border: 1px solid rgba(255,255,255,0.6); flex-shrink: 0; }
+  .entity-item[draggable="true"] { cursor: grab; }
+  .entity-item.dragging { opacity: 0.4; }
+  .entity-item.drag-over { box-shadow: 0 0 0 2px #7c5ec4; background: rgba(224,215,245,0.7); }
+  .entity-header { display: flex; align-items: center; padding: 8px 12px; cursor: pointer; user-select: none; transition: background 0.15s; position: relative; }
+  .entity-header:hover { background: rgba(255,255,255,0.85); }
+  .entity-header .expand { width: 12px; text-align: center; color: #999; font-size: 9px; transition: transform 0.2s; margin-right: 6px; }
+  .entity-item.expanded .entity-header .expand { transform: rotate(90deg); }
+  .entity-header .name { font-weight: 600; font-size: 12.5px; flex: 1; }
+  .entity-header .vol { font-size: 11px; color: #888; margin-left: 6px; }
+  .entity-header .entity-actions { display: none; margin-left: 6px; gap: 3px; }
+  .entity-header:hover .entity-actions { display: inline-flex; }
+  .entity-header .ent-btn { width: 20px; height: 20px; border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.9); color: #666; cursor: pointer; border-radius: 4px; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .entity-header .ent-btn:hover { background: #7c5ec4; color: #fff; border-color: #7c5ec4; }
+  .entity-header .ent-btn.remove:hover { background: #e63946; border-color: #e63946; }
+  .entity-desc { display: none; padding: 0 12px 6px 30px; font-size: 11px; color: #888; }
+  .entity-item.expanded .entity-desc { display: block; }
+  .entity-products { display: none; padding: 4px 12px 10px 30px; max-height: 200px; overflow-y: auto; }
+  .entity-item.expanded .entity-products { display: block; }
+  .entity-products::-webkit-scrollbar { width: 3px; }
+  .entity-products::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+  .entity-product-item { display: flex; justify-content: space-between; padding: 3px 6px; font-size: 11.5px; color: #555; cursor: pointer; border-radius: 3px; transition: background 0.1s; }
+  .entity-product-item:hover { background: rgba(124,94,196,0.08); }
+  .entity-product-item .kw { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entity-product-item .p-vol { color: #999; font-size: 11px; }
+  /* 카테고리 카드 (엔티티뷰) drop 영역 */
+  .cep-card.entity-cat.drag-over { box-shadow: 0 0 0 3px #5c9fc4; }
+  /* Undo 스낵바 */
+  .snackbar { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); display: none; align-items: center; gap: 12px; z-index: 20; }
+  .snackbar.show { display: flex; }
+  .snackbar-msg { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .snackbar-btn { background: transparent; border: 1px solid rgba(255,255,255,0.4); color: #fff; padding: 3px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .snackbar-btn:hover { background: rgba(255,255,255,0.15); }
+  /* 병합 대상 선택 모달 */
+  .merge-modal-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); z-index: 30; display: none; align-items: center; justify-content: center; }
+  .merge-modal-bg.show { display: flex; }
+  .merge-modal { background: #fff; border-radius: 12px; padding: 20px; width: 320px; max-height: 60%; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+  .merge-modal h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .merge-modal .sub { font-size: 11px; color: #999; margin-bottom: 12px; }
+  .merge-list { flex: 1; overflow-y: auto; margin: 8px 0; }
+  .merge-option { padding: 8px 10px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .merge-option:hover { background: #f5f0fa; border-color: #7c5ec4; }
+  .merge-cat-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; color: #fff; font-weight: 700; }
+  .merge-cancel { align-self: flex-end; background: transparent; border: none; color: #999; font-size: 12px; cursor: pointer; margin-top: 8px; }
+  /* CEP 뷰 · 7W 그리드 + 2단계 트리 · 글라스모피즘 */
+  .cep-view { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 20px; background: linear-gradient(135deg, #f8f5ff 0%, #f0f7ff 50%, #f5faf7 100%); display: none; }
+  .cep-view.active { display: block; }
+  /* 사이드바 모드 스위처 · 클러스터 vs 검색인텐트 */
+  .side-mode-tabs { display: flex; gap: 4px; margin-bottom: 12px; background: #f0ebfa; border-radius: 8px; padding: 3px; }
+  .side-mode-tab { flex: 1; padding: 7px 8px; border: none; background: transparent; border-radius: 6px; font-size: 11.5px; font-weight: 600; color: #888; cursor: pointer; transition: all 0.15s; }
+  .side-mode-tab.active { background: #fff; color: #7c5ec4; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .side-panel { display: none; }
+  .side-panel.active { display: block; }
+  /* 공용 필터 · 사이드바 하단 · 볼륨·트렌드 이중 슬라이더 */
+  .range-filter { padding: 12px 0; border-top: 1px solid #eef; margin-top: 8px; }
+  .range-filter h4 { font-size: 12px; font-weight: 700; color: #333; margin-bottom: 10px; text-transform: none; letter-spacing: 0; }
+  .range-filter .and-sep { text-align: center; color: #ccc; font-size: 10px; font-style: italic; margin: 12px 0 8px; position: relative; }
+  .range-filter .and-sep::before, .range-filter .and-sep::after {
+    content: ''; position: absolute; top: 50%; width: 30%; height: 1px; background: #eee;
+  }
+  .range-filter .and-sep::before { left: 0; }
+  .range-filter .and-sep::after { right: 0; }
+  .dual-slider { position: relative; height: 24px; margin: 6px 4px 8px; }
+  .dual-slider .track { position: absolute; top: 10px; left: 0; right: 0; height: 4px; background: #eee; border-radius: 2px; }
+  .dual-slider .track-fill { position: absolute; top: 10px; height: 4px; border-radius: 2px; background: #7c5ec4; transition: background 0.2s; }
+  .dual-slider .dual-slider-input { position: absolute; top: 6px; width: 100%; height: 12px; -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; margin: 0; }
+  .dual-slider .dual-slider-input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #7c5ec4; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); cursor: pointer; pointer-events: auto; }
+  .dual-slider .dual-slider-input::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #7c5ec4; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); cursor: pointer; pointer-events: auto; }
+  .range-nums { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .range-nums input[type="number"] { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 11.5px; text-align: center; -moz-appearance: textfield; }
+  .range-nums input[type="number"]::-webkit-inner-spin-button,
+  .range-nums input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .range-nums .sep { color: #999; font-size: 12px; }
+  .range-nums .unit { color: #999; font-size: 11px; margin-left: 3px; }
+  .trend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .trend-row input[type="checkbox"] { width: 14px; height: 14px; accent-color: #7c5ec4; cursor: pointer; margin: 0; }
+  .trend-row label { font-size: 12px; color: #444; cursor: pointer; user-select: none; font-weight: 600; }
+  .trend-block { padding: 4px 0 12px; }
+  .trend-block.disabled .dual-slider .track-fill { background: #ddd; }
+  .trend-block.disabled .dual-slider input::-webkit-slider-thumb { background: #bbb; }
+  .trend-block.disabled .range-nums input { color: #bbb; background: #f5f5f5; }
+  .trend-block.down .dual-slider .track-fill { background: #f4a6b8; }
+  .trend-block.down .dual-slider input::-webkit-slider-thumb { background: #f4a6b8; }
+  .trend-block.up .dual-slider .track-fill { background: #a8d99b; }
+  .trend-block.up .dual-slider input::-webkit-slider-thumb { background: #a8d99b; }
+  /* 상세 Drawer · 오른쪽 슬라이드 패널 */
+  .detail-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 380px; max-width: 90vw; background: #fff; border-left: 1px solid #eef; box-shadow: -6px 0 20px rgba(0,0,0,0.08); transform: translateX(100%); transition: transform 0.25s ease; z-index: 40; display: flex; flex-direction: column; }
+  .detail-drawer.open { transform: translateX(0); }
+  .detail-drawer-header { padding: 14px 18px; border-bottom: 1px solid #eef; display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0; }
+  .detail-drawer-header .title { flex: 1; font-size: 15px; font-weight: 700; color: #222; line-height: 1.3; word-break: break-all; }
+  .detail-drawer-header .close { width: 28px; height: 28px; border: 1px solid #e5e5e5; background: #fff; border-radius: 6px; cursor: pointer; font-size: 14px; color: #666; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .detail-drawer-header .close:hover { background: #f5f5f5; }
+  .detail-drawer-meta { padding: 4px 18px 12px; display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #f4f4f8; }
+  .detail-drawer-meta .chip { padding: 3px 9px; border-radius: 12px; font-size: 10.5px; font-weight: 600; background: #f0ebfa; color: #7c5ec4; }
+  .detail-drawer-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .detail-section { padding: 12px 18px; border-bottom: 1px solid #f4f4f8; }
+  .detail-section:last-child { border-bottom: none; }
+  .detail-section h4 { font-size: 10.5px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+  .detail-metric-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12.5px; color: #444; }
+  .detail-metric-row .label { color: #888; }
+  .detail-metric-row .value { font-weight: 700; color: #222; }
+  .detail-metric-row .value.up { color: #3a8f3a; }
+  .detail-metric-row .value.down { color: #c94a5f; }
+  .detail-spark { margin-top: 8px; background: #fafafa; border-radius: 6px; padding: 8px; }
+  .detail-bar-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; margin-bottom: 6px; }
+  .detail-bar-row .bar-label { width: 60px; color: #555; flex-shrink: 0; }
+  .detail-bar-row .bar-track { flex: 1; height: 8px; background: #f0f0f5; border-radius: 4px; overflow: hidden; }
+  .detail-bar-row .bar-fill { height: 100%; background: #7c5ec4; border-radius: 4px; transition: width 0.2s; }
+  .detail-bar-row .bar-val { width: 40px; text-align: right; color: #666; font-weight: 600; font-size: 11px; }
+  .detail-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 12px; }
+  .detail-feature-grid .fkey { color: #888; }
+  .detail-feature-grid .fval { color: #333; font-weight: 600; text-align: right; }
+  .detail-neighbor { padding: 6px 8px; background: #fafafa; border-radius: 5px; margin-bottom: 3px; font-size: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .detail-neighbor:hover { background: #f0ebfa; }
+  .detail-neighbor .n-kw { color: #444; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .detail-neighbor .n-vol { color: #999; margin-left: 8px; font-size: 11px; }
+  .detail-empty-line { color: #bbb; font-size: 11.5px; padding: 4px 0; }
+  /* 인텐트 필터 · 사이드바 안 · 체크박스 UI */
+  .intent-filter-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .intent-filter-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; border: 1.5px solid #eee; background: #fff; cursor: pointer; user-select: none; transition: all 0.15s; }
+  .intent-filter-item:hover { border-color: #d5d5d5; background: #fafafa; }
+  .intent-filter-item .swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; border: 1.5px solid #ccc; background: transparent; transition: all 0.15s; }
+  .intent-filter-item.active .swatch { border-color: transparent; }
+  .intent-filter-item .label { flex: 1; font-size: 12.5px; font-weight: 500; color: #666; }
+  .intent-filter-item.active .label { color: #333; font-weight: 600; }
+  .intent-filter-item .count { font-size: 11px; color: #999; }
+  .intent-empty-msg { padding: 10px; background: #fff4dd; border: 1px solid #f0d99e; border-radius: 8px; font-size: 11.5px; color: #7a5a20; line-height: 1.5; }
+  .intent-empty-msg code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-size: 10.5px; }
+  .cep-info { font-size: 11px; color: #666; padding: 12px 16px; background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 12px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+  .cep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  /* Level 1 · 카드 (글라스모피즘) · CEP뷰·엔티티뷰 통일 · 이중 스크롤 (부모 + 서브그룹 body) */
+  .cep-card { background: rgba(255, 255, 255, 0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 18px; padding: 16px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 6px 20px rgba(0,0,0,0.04); display: flex; flex-direction: column; transition: transform 0.15s, box-shadow 0.15s; height: 560px; }
+  .cep-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,0.08); }
+  .cep-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .cep-icon-wrap { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; overflow: hidden; }
+  .cep-icon-wrap::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 50%; background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%); border-radius: 14px 14px 0 0; pointer-events: none; }
+  .cep-icon-wrap svg { width: 24px; height: 24px; z-index: 1; }
+  .cep-header .label-wrap { flex: 1; }
+  .cep-header .label { font-size: 14px; font-weight: 700; display: block; letter-spacing: -0.2px; }
+  .cep-header .sub-label { font-size: 11px; color: #888; margin-top: 1px; }
+  .cep-header .auto-badge { font-size: 10px; color: #b8860b; background: rgba(255, 236, 179, 0.6); padding: 2px 8px; border-radius: 10px; font-weight: 600; cursor: help; align-self: flex-start; margin-top: 4px; border: 1px solid rgba(184, 134, 11, 0.25); }
+  .cep-header .auto-badge:hover { background: rgba(255, 236, 179, 0.9); }
+  .cep-vol-total { display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.5); border-radius: 10px; margin-bottom: 10px; font-size: 12px; color: #666; }
+  .cep-vol-total .val { font-weight: 700; color: #222; }
+  /* Level 2 · 하위 그룹 (subgroup expander) · 카드 남은 공간 · 내부 스크롤 */
+  .cep-subgroups { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; padding-right: 4px; min-height: 0; }
+  .cep-subgroups::-webkit-scrollbar { width: 4px; }
+  .cep-subgroups::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+  .cep-subgroup { background: rgba(255,255,255,0.4); border-radius: 10px; overflow: hidden; flex-shrink: 0; }
+  .cep-subgroup-header { display: flex; align-items: center; padding: 8px 12px; cursor: pointer; user-select: none; transition: background 0.15s; font-size: 12px; }
+  .cep-subgroup-header:hover { background: rgba(255,255,255,0.7); }
+  .cep-subgroup-header .sub-chev { width: 12px; text-align: center; color: #999; font-size: 9px; transition: transform 0.2s; margin-right: 6px; }
+  .cep-subgroup.expanded .cep-subgroup-header .sub-chev { transform: rotate(90deg); }
+  .cep-subgroup-header .sub-name { flex: 1; font-weight: 600; color: #444; }
+  .cep-subgroup-header .sub-meta { font-size: 11px; color: #888; }
+  .cep-subgroup-body { display: none; padding: 6px 12px 10px 30px; background: rgba(255,255,255,0.3); font-size: 11.5px; max-height: 200px; overflow-y: auto; }
+  .cep-subgroup.expanded .cep-subgroup-body { display: block; }
+  .cep-subgroup-body::-webkit-scrollbar { width: 3px; }
+  .cep-subgroup-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+  /* CEP 서브그룹 hover 시 액션 버튼 (엔티티와 동일) */
+  .cep-subgroup-header { position: relative; }
+  .cep-subgroup-header .sg-actions { display: none; margin-left: 6px; gap: 3px; }
+  .cep-subgroup-header:hover .sg-actions { display: inline-flex; }
+  .cep-subgroup-header .sg-btn { width: 18px; height: 18px; border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.9); color: #666; cursor: pointer; border-radius: 4px; font-size: 11px; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .cep-subgroup-header .sg-btn:hover { background: #7c5ec4; color: #fff; border-color: #7c5ec4; }
+  .cep-subgroup-header .sg-btn.remove:hover { background: #e63946; border-color: #e63946; }
+  /* CEP 카드 drop 영역 */
+  .cep-card.cep-w.drag-over { box-shadow: 0 0 0 3px #5c9fc4; }
+  .cep-subgroup { transition: all 0.15s; }
+  .cep-subgroup[draggable="true"] { cursor: grab; }
+  .cep-subgroup.dragging { opacity: 0.4; }
+  .cep-kw-item { display: flex; justify-content: space-between; padding: 3px 6px; color: #555; cursor: pointer; border-radius: 3px; transition: background 0.1s; }
+  .cep-kw-item:hover { background: rgba(124,94,196,0.08); }
+  .cep-kw-item .kw { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cep-kw-item .vol { color: #999; font-size: 11px; }
+  /* 카드뷰 스타일 */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .cluster-card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card-header { display: flex; align-items: center; gap: 6px; padding-bottom: 6px; margin-bottom: 6px; }
+  .card-letter { font-weight: 700; padding: 3px 10px; border-radius: 14px; font-size: 11px; transition: all 0.2s; }
+  /* 카드 헤더 · ? 아이콘 + 조건·활용 툴팁 (전역 fixed 위치) */
+  .card-help { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; background: rgba(0,0,0,0.06); color: #888; font-size: 10px; font-weight: 700; cursor: help; margin-left: 6px; user-select: none; transition: background 0.15s; }
+  .card-help:hover { background: rgba(124,94,196,0.15); color: #7c5ec4; }
+  #card-help-tip { display: none; position: fixed; width: 260px; background: rgba(50,50,50,0.97); color: #fff; padding: 10px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 400; line-height: 1.5; z-index: 200; text-align: left; pointer-events: none; box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+  #card-help-tip .tip-heading { display: block; font-size: 10px; font-weight: 700; color: #b8b8d5; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; margin-top: 6px; }
+  #card-help-tip .tip-heading:first-child { margin-top: 0; }
+  .cluster-card { opacity: 1; transition: opacity 0.2s; }
+  .cluster-card.dimmed { opacity: 0.45; }
+  .cluster-card.dimmed .card-letter { background: #fff !important; color: #999 !important; border-color: #ddd !important; }
+  .cluster-card.selected .card-letter { color: #fff !important; }
+  /* 선택된 카드 · 헤더 색상이 카드 최상단에 fill · card-header 전체 배경 처리 */
+  .cluster-card { position: relative; overflow: visible; }
+  .cluster-card > .card-header-fill { border-radius: 12px 12px 0 0; }
+  .cluster-card > .card-kw-list { overflow-x: hidden; }
+  .cluster-card .card-header-fill { position: absolute; top: 0; left: 0; right: 0; height: 42px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .cluster-card.selected .card-header-fill { opacity: 1; }
+  .cluster-card.selected .card-header { position: relative; z-index: 1; }
+  .card-label { font-size: 11px; color: #999; }
+  .card-name { font-size: 14px; font-weight: 700; color: #222; margin: 4px 0 10px; line-height: 1.3; min-height: 2.6em; }
+  .card-vol-total { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; margin-bottom: 8px; font-size: 12px; color: #666; }
+  .card-vol-total .val { font-weight: 700; color: #222; }
+  .card-kw-list { font-size: 12px; max-height: 260px; overflow-y: auto; padding-right: 4px; }
+  .card-kw-list::-webkit-scrollbar { width: 5px; }
+  .card-kw-list::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+  .card-kw-list::-webkit-scrollbar-track { background: #f8f8f8; }
+  .card-kw-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px; color: #444; cursor: pointer; border-radius: 4px; transition: background 0.1s; }
+  .card-kw-item:hover { background: #f0ebfa; }
+  .card-kw-item .kw { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-kw-item .vol { flex-shrink: 0; }
+  .spike-tag { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 8px; font-size: 9.5px; font-weight: 700; flex-shrink: 0; }
+  .spike-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; cursor: help; }
+  /* Sparkline Wall · 트렌드 모드에서 카드뷰 아래 */
+  .sparkline-wall { margin-top: 24px; padding: 18px 20px; background: #fff; border: 1px solid #eef; border-radius: 14px; }
+  .sparkline-wall-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f4f4f8; }
+  .sparkline-wall-title { font-size: 13px; font-weight: 700; color: #333; }
+  .sparkline-wall-title .count { color: #999; font-weight: 500; margin-left: 6px; font-size: 12px; }
+  .sparkline-wall-sort { display: flex; gap: 4px; background: #f0ebfa; border-radius: 6px; padding: 2px; }
+  .sparkline-wall-sort button { padding: 4px 10px; border: none; background: transparent; border-radius: 4px; font-size: 11px; font-weight: 600; color: #888; cursor: pointer; }
+  .sparkline-wall-sort button.active { background: #fff; color: #7c5ec4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .sparkline-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .sparkline-cell { background: #fafafa; border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: all 0.15s; border: 1px solid #f0f0f5; }
+  .sparkline-cell:hover { background: #f5f0ff; border-color: #d5c8ee; transform: translateY(-1px); }
+  .sparkline-cell .sc-header { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+  .sparkline-cell .sc-kw { flex: 1; font-size: 11.5px; font-weight: 600; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sparkline-cell .sc-tag { padding: 1px 5px; border-radius: 6px; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+  .sparkline-cell .sc-svg { display: block; width: 100%; height: 32px; }
+  .sparkline-cell .sc-meta { display: flex; justify-content: space-between; margin-top: 3px; font-size: 10px; color: #888; }
+  .sparkline-cell .sc-meta .sc-spike { font-weight: 700; }
+  /* Wall 필터 chip */
+  .sparkline-wall-filters { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .wall-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1.5px solid #e5e5e5; background: #fff; border-radius: 16px; font-size: 11.5px; font-weight: 600; color: #666; cursor: pointer; transition: all 0.15s; }
+  .wall-chip:hover { border-color: #7c5ec4; color: #7c5ec4; }
+  .wall-chip.active { background: #7c5ec4; border-color: #7c5ec4; color: #fff; }
+  .wall-chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+  .wall-chip.active .dot { box-shadow: 0 0 0 1px #fff; }
+  /* 페이지네이션 */
+  .sparkline-pagination { display: flex; justify-content: center; align-items: center; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+  .sparkline-pagination button { min-width: 28px; height: 28px; padding: 0 8px; border: 1px solid #e5e5e5; background: #fff; border-radius: 6px; font-size: 11.5px; color: #666; cursor: pointer; transition: all 0.15s; }
+  .sparkline-pagination button:hover:not(:disabled) { border-color: #7c5ec4; color: #7c5ec4; }
+  .sparkline-pagination button.active { background: #7c5ec4; border-color: #7c5ec4; color: #fff; font-weight: 700; }
+  .sparkline-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .sparkline-pagination .page-info { padding: 0 8px; color: #888; font-size: 11px; }
+  .card-kw-item .kw { max-width: 145px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-kw-item .vol { color: #999; }
+</style>
+</head>
+<body>
+<div class="viz-container">
+  <div class="sidebar" id="sidebar">
+    <div class="side-mode-tabs" id="side-mode-tabs">
+      <button class="side-mode-tab active" data-mode="cluster">클러스터</button>
+      <button class="side-mode-tab" data-mode="intent">검색인텐트</button>
+      <button class="side-mode-tab" data-mode="trend">트렌드</button>
+      <button class="side-mode-tab" data-mode="serp">검색노출</button>
+      <button class="side-mode-tab" data-mode="user">유저특성</button>
+      <button class="side-mode-tab" data-mode="commerce">상업성</button>
+    </div>
+
+    <!-- 클러스터 모드 · 기본 -->
+    <div class="side-panel active" id="side-panel-cluster">
+      <div class="hub-toggle" id="hub-toggle">
+        허브키워드 <span style="margin-left: 6px; opacity: 0.6; font-size: 11px;">(__HUB_COUNT__)</span>
+      </div>
+
+      <h3>Clusters (__CLUSTER_COUNT__)</h3>
+      <div class="filter-list" id="cluster-chips"></div>
+    </div>
+
+    <!-- 검색인텐트 모드 · 4개 체크박스 -->
+    <div class="side-panel" id="side-panel-intent">
+      <div class="intent-filter-list" id="intent-filter-list"></div>
+      <div class="intent-empty-msg" id="intent-empty-msg" style="display:none;">
+        인텐트 데이터 없음 · <code>data_type=all</code>로 keyword_info 조회 필요
+      </div>
+    </div>
+
+    <!-- 트렌드 모드 · 3개 체크박스 (상승·안정·하락) -->
+    <div class="side-panel" id="side-panel-trend">
+      <div class="intent-filter-list" id="trend-filter-list"></div>
+      <div class="intent-empty-msg" id="trend-empty-msg" style="display:none;">
+        트렌드 데이터 없음 · <code>data_type=all</code>로 keyword_info 조회 필요
+      </div>
+    </div>
+
+    <!-- 검색노출타입 모드 -->
+    <div class="side-panel" id="side-panel-serp">
+      <div class="intent-filter-list" id="serp-filter-list"></div>
+      <div class="intent-empty-msg" id="serp-empty-msg" style="display:none;">
+        SERP 데이터 없음 · <code>data_type=all</code>로 keyword_info 조회 필요
+      </div>
+    </div>
+
+    <!-- 유저특성 모드 -->
+    <div class="side-panel" id="side-panel-user">
+      <div class="intent-filter-list" id="user-filter-list"></div>
+      <div class="intent-empty-msg" id="user-empty-msg" style="display:none;">
+        유저특성 데이터 없음 · <code>data_type=all</code>로 keyword_info 조회 필요
+      </div>
+    </div>
+
+    <!-- 상업성 모드 -->
+    <div class="side-panel" id="side-panel-commerce">
+      <div class="intent-filter-list" id="commerce-filter-list"></div>
+      <div class="intent-empty-msg" id="commerce-empty-msg" style="display:none;">
+        상업성 데이터 없음 · <code>data_type=all</code>로 keyword_info 조회 필요
+      </div>
+    </div>
+
+    <div class="range-filter" id="range-filter">
+      <h4>월평균 검색량</h4>
+      <div class="dual-slider" data-key="vol">
+        <div class="track"></div>
+        <div class="track-fill"></div>
+        <input type="range" class="dual-slider-input min" min="0" max="100" value="0" />
+        <input type="range" class="dual-slider-input max" min="0" max="100" value="100" />
+      </div>
+      <div class="range-nums">
+        <input type="number" id="vol-min" value="0" />
+        <span class="sep">–</span>
+        <input type="number" id="vol-max" value="0" />
+      </div>
+
+      <div class="and-sep">and</div>
+
+      <h4>3개월 증감률</h4>
+      <div class="trend-block down disabled" id="trend-down-block">
+        <div class="trend-row">
+          <input type="checkbox" id="trend-down-chk" />
+          <label for="trend-down-chk">하락</label>
+        </div>
+        <div class="dual-slider" data-key="trend-down">
+          <div class="track"></div>
+          <div class="track-fill"></div>
+          <input type="range" class="dual-slider-input min" min="-100" max="0" value="-100" />
+          <input type="range" class="dual-slider-input max" min="-100" max="0" value="-1" />
+        </div>
+        <div class="range-nums">
+          <input type="number" id="trend-down-min" value="-100" min="-100" max="0" />
+          <span class="unit">%</span>
+          <span class="sep">–</span>
+          <input type="number" id="trend-down-max" value="-1" min="-100" max="0" />
+          <span class="unit">%</span>
+        </div>
+      </div>
+      <div class="trend-block up disabled" id="trend-up-block">
+        <div class="trend-row">
+          <input type="checkbox" id="trend-up-chk" />
+          <label for="trend-up-chk">상승</label>
+        </div>
+        <div class="dual-slider" data-key="trend-up">
+          <div class="track"></div>
+          <div class="track-fill"></div>
+          <input type="range" class="dual-slider-input min" min="0" max="500" value="1" />
+          <input type="range" class="dual-slider-input max" min="0" max="500" value="500" />
+        </div>
+        <div class="range-nums">
+          <input type="number" id="trend-up-min" value="1" min="0" />
+          <span class="unit">%</span>
+          <span class="sep">–</span>
+          <input type="number" id="trend-up-max" value="500" min="0" />
+          <span class="unit">%</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>키워드 목록 · <span id="kw-count">__NODE_COUNT__</span>건</h3>
+    <input class="kw-search" id="kw-search" placeholder="키워드 검색..." />
+    <div class="kw-list" id="kw-list"></div>
+  </div>
+
+  <div class="canvas-wrap">
+    <div class="header-bar">
+      <button class="hamburger" id="sidebar-toggle" title="사이드바 접기/펼치기" aria-label="사이드바 토글">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="view-toggle">
+        <button class="view-btn active" data-view="graph">그래프뷰</button>
+        <button class="view-btn" data-view="card">카드뷰</button>
+        <button class="view-btn" data-view="cep">CEP뷰</button>
+        <button class="view-btn" data-view="entity">엔티티뷰</button>
+      </div>
+      <h2>__CATEGORY__ · __GL__</h2>
+      <div class="meta">노드 __NODE_COUNT__ · 클러스터 __CLUSTER_COUNT__ · 허브 __HUB_COUNT__ · orientation __ORIENTATION__ · hop __HOP__</div>
+    </div>
+
+    <div class="content-area">
+      <div class="graph-view active" id="graph-view">
+        <svg id="graph"></svg>
+        <div class="isolated-badge" id="isolated-badge">← 전체 클러스터 보기</div>
+      </div>
+
+      <div class="card-view" id="card-view">
+        <div class="card-grid" id="card-grid"></div>
+        <div class="sparkline-wall" id="sparkline-wall" style="display:none;">
+          <div class="sparkline-wall-header">
+            <div class="sparkline-wall-title">
+              Sparkline Wall
+              <span class="count" id="sparkline-wall-count"></span>
+            </div>
+            <div class="sparkline-wall-sort" id="sparkline-wall-sort">
+              <button data-sort="impact" class="active">임팩트 순 <span class="card-help" data-help-cond="볼륨 × 급등 스코어의 조합 (√볼륨 × 급등스코어)" data-help-use="검색량이 큰 키워드 중 급등한 것 우선 · 광고·SEO 의사결정에 가장 실용적">?</span></button>
+              <button data-sort="spike">급등 스코어 <span class="card-help" data-help-cond="최근 3개월 평균이 12개월 이동평균의 몇 배인지" data-help-use="이동평균 대비 튐 강도만 · 볼륨 무관하게 폭발적 급등만 보고 싶을 때">?</span></button>
+              <button data-sort="volume">볼륨 순 <span class="card-help" data-help-cond="월평균 검색량 큰 순" data-help-use="시장 크기 큰 키워드부터 보고 싶을 때 · 트렌드 무관">?</span></button>
+            </div>
+          </div>
+          <div class="sparkline-wall-filters" id="sparkline-wall-filters">
+            <button class="wall-chip active" data-kind="all">전체</button>
+            <button class="wall-chip" data-kind="spike"><span class="dot" style="background:#e63946;"></span>급등</button>
+            <button class="wall-chip" data-kind="coldStart"><span class="dot" style="background:#7c5ec4;"></span>신규</button>
+            <button class="wall-chip" data-kind="growth"><span class="dot" style="background:#3a8f3a;"></span>완만</button>
+          </div>
+          <div class="sparkline-grid" id="sparkline-grid"></div>
+          <div class="sparkline-pagination" id="sparkline-pagination"></div>
+        </div>
+      </div>
+
+      <div class="cep-view" id="cep-view">
+        <div class="cep-info">
+          💡 <b>CEP · Category Entry Point (7W 프레임워크)</b> · Ehrenberg-Bass Institute 표준 · 소비자가 이 카테고리를 떠올리는 <b>7가지 진입점(WHY·WHEN·WHERE·WHILE·WHOM·WITH WHAT·HOW)</b>으로 키워드 자동 분류.
+          <br>
+          <span style="color: #b8860b;">⚠️ <b>정규식 기반 자동 분류이므로 오분류가 있을 수 있습니다.</b></span> 카드마다 hover 시 뜨는 <b>⇢ 버튼</b>으로 다른 W로 이동하거나 <b>− 버튼</b>으로 제거해 수동 정제 가능합니다. 예: "전기자전거 스로틀"이 HOW(방식)에 있지만 실제로는 규제·면허 문맥일 수 있음.
+        </div>
+        <div class="cep-grid" id="cep-grid"></div>
+      </div>
+
+      <div class="cep-view" id="entity-view">
+        <div class="cep-info" style="display: flex; align-items: center; gap: 12px;">
+          <span style="flex:1;">
+            🔍 <b>감지된 엔티티</b> · WebSearch로 검증된 브랜드·성분·인물 자동 분류 · 각 엔티티 <b>drag → drop으로 병합·이동</b>
+          </span>
+          <button class="act-btn" id="undo-btn" title="Undo" disabled style="width:28px; height:28px; border:1px solid #e0d5ee; background:#fff; border-radius:6px; cursor:pointer;">↩</button>
+          <button class="act-btn" id="reset-btn" title="Reset" style="width:28px; height:28px; border:1px solid #e0d5ee; background:#fff; border-radius:6px; cursor:pointer;">⟲</button>
+        </div>
+        <div class="cep-grid" id="entity-grid"></div>
+      </div>
+
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+    <div id="card-help-tip"></div>
+    <div class="detail-drawer" id="detail-drawer">
+      <div class="detail-drawer-header">
+        <div class="title" id="detail-title">키워드</div>
+        <button class="close" id="detail-close" title="닫기">×</button>
+      </div>
+      <div class="detail-drawer-meta" id="detail-meta"></div>
+      <div class="detail-drawer-body" id="detail-body"></div>
+    </div>
+  </div>
+  <div class="snackbar" id="snackbar">
+    <span class="snackbar-msg" id="snackbar-msg"></span>
+    <button class="snackbar-btn" id="snackbar-undo">Undo</button>
+  </div>
+  <div class="merge-modal-bg" id="merge-modal-bg">
+    <div class="merge-modal">
+      <h4 id="merge-title">카테고리 이동</h4>
+      <div class="sub" id="merge-sub"></div>
+      <div class="merge-list" id="merge-list"></div>
+      <button class="merge-cancel" id="merge-cancel">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// __DATA_START__
+/* CLAUDE: 이 iframe은 하나의 시드 데이터만 렌더.
+ * 여러 시드는 부모 shell.html이 탭으로 관리 · iframe.srcdoc 교체.
+ */
+const CLUSTER_DATA = {
+  "seeds": ["__SEED1__"],
+  "communities": { "0": ["kw1"] },
+  "rels": [ ["kw1", "kw2"] ],
+  "nodes": [ { "keyword": "kw1", "volume": 12500, "community": "0" } ],
+  "hub_keywords": [],
+  "bridge_kws": [],
+  "cluster_labels": { "0": { "letter": "A", "name": "이름", "total_volume": 100000, "size": 30 } },
+  "detected_entities": { "brands": [], "ingredients": [], "other": [] },
+  "cep_grouped": {},
+  // keyword_info · data_type=all 결과를 { keyword: {intents, demography, features, monthly_volume} } 형태로 병합
+  // 없으면 인텐트뷰가 "데이터 없음" 안내 표시
+  "keyword_info": {
+    // "kw1": { "intents": {"i":0.5,"n":0,"c":0.5,"t":0}, "demography": {...}, "features": {...}, "monthly_volume": [...] }
+  }
+};
+// __DATA_END__
+
+
+// __JS_MODULES__
+
+</script>
+</body>
+</html>

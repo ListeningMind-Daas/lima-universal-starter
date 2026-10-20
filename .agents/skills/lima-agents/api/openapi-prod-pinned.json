@@ -1,0 +1,420 @@
+{
+ "schema": "lm-openapi-pin/v2",
+ "info": {
+  "title": "listeningmind-data-api",
+  "version": "v1.0.13"
+ },
+ "pinned_at": "2026-10-13",
+ "source": "https://listeningmind-data-api.ascentlab.io/openapi.json",
+ "paths": {
+  "/cluster_finder": {
+   "method": "POST",
+   "summary": "키워드 관계 정보 조회",
+   "params": [
+    "data_type",
+    "gl",
+    "hop",
+    "is_skills",
+    "keyword",
+    "limit",
+    "orientation",
+    "response_format",
+    "time_point",
+    "user_query"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 150,
+     "output_cost": 50,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 150,
+    "output_cost": 50
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "time_point": [
+     "curr",
+     "3m",
+     "6m",
+     "9m",
+     "12m"
+    ],
+    "orientation": [
+     "UNDIRECTED",
+     "NATURAL",
+     "REVERSE"
+    ],
+    "data_type": [
+     "communities",
+     "rels",
+     "all"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/cluster_finder/keyword_list": {
+   "method": "POST",
+   "summary": "키워드 List 조회",
+   "params": [
+    "gl",
+    "hop",
+    "is_skills",
+    "keyword",
+    "limit",
+    "orientation",
+    "response_format",
+    "time_point"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 30,
+     "output_cost": 2,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 30,
+    "output_cost": 2
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "time_point": [
+     "curr",
+     "3m",
+     "6m",
+     "9m",
+     "12m"
+    ],
+    "orientation": [
+     "UNDIRECTED",
+     "NATURAL",
+     "REVERSE"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/intent_finder/keyword_list": {
+   "method": "POST",
+   "summary": "키워드 List 조회",
+   "params": [
+    "gl",
+    "is_skills",
+    "keywords",
+    "limit",
+    "order",
+    "response_format",
+    "sort",
+    "user_query",
+    "volume_threshold"
+   ],
+   "required": [
+    "gl",
+    "keywords"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 30,
+     "output_cost": 2,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 30,
+    "output_cost": 2
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "sort": [
+     "volume_avg",
+     "volume_total",
+     "volume_trend",
+     "cpc",
+     "competition_index"
+    ],
+    "order": [
+     "desc",
+     "asc"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/keyword_info": {
+   "method": "POST",
+   "summary": "ListeningMind 키워드 정보 조회",
+   "params": [
+    "data_type",
+    "gl",
+    "is_skills",
+    "keywords",
+    "response_format",
+    "user_query"
+   ],
+   "required": [
+    "gl",
+    "keywords"
+   ],
+   "costs": {
+    "ads_metrics": {
+     "input_cost": 1,
+     "output_cost": 0,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    },
+    "ads_info": {
+     "input_cost": 1,
+     "output_cost": 0,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    },
+    "all": {
+     "input_cost": 10,
+     "output_cost": 0,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 10,
+    "output_cost": 0
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "data_type": [
+     "ads_metrics",
+     "ads_info",
+     "all"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/path_finder": {
+   "method": "POST",
+   "summary": "키워드 검색 경로 분석",
+   "params": [
+    "gl",
+    "is_skills",
+    "keyword",
+    "limit",
+    "response_format",
+    "time_point",
+    "user_query"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 50,
+     "output_cost": 40,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 50,
+    "output_cost": 40
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "time_point": [
+     "curr",
+     "3m",
+     "6m",
+     "9m",
+     "12m"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/path_finder/keyword_list": {
+   "method": "POST",
+   "summary": "키워드 List 조회",
+   "params": [
+    "gl",
+    "is_skills",
+    "keyword",
+    "limit",
+    "response_format",
+    "time_point"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 30,
+     "output_cost": 2,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 30,
+    "output_cost": 2
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "time_point": [
+     "curr",
+     "3m",
+     "6m",
+     "9m",
+     "12m"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/serp": {
+   "method": "POST",
+   "summary": "SERP 조회",
+   "params": [
+    "device",
+    "features",
+    "gl",
+    "is_skills",
+    "keyword",
+    "num",
+    "response_format",
+    "user_query"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 30,
+     "output_cost": 0,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 30,
+    "output_cost": 0
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "num": [
+     10,
+     20
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/trend_finder/issue_list": {
+   "method": "POST",
+   "summary": "트렌드파인더 이슈 키워드 조회",
+   "params": [
+    "content_type",
+    "gl",
+    "is_skills",
+    "keyword",
+    "limit",
+    "order",
+    "period_days",
+    "response_format",
+    "sort",
+    "user_query"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 50,
+     "output_cost": 2,
+     "output_unit": "출력 과금(이슈 항목 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 50,
+    "output_cost": 2
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "sort": [
+     "score",
+     "date"
+    ],
+    "order": [
+     "desc",
+     "asc"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/usage/summary": {
+   "method": "GET",
+   "summary": "사용량 대시보드 집계 조회",
+   "params": [],
+   "required": [],
+   "costs": {},
+   "cost": {}
+  }
+ }
+}

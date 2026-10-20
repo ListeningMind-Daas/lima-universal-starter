@@ -1,0 +1,3 @@
+ts,gl,seed,role,anchor,mode,n,noise_rate,fit_rate,brand_hits,cs_rate,verdict,cost,note
+2026-08-22,kr,전기자전거,category,"전기자전거,전동자전거,e-bike,ebike,자전거",buy,100,0.02,1.0,0,0.01,시드 통합,230,브랜드 히트 부족(사전 공백이면 brand-map 보강 · 비브랜드 카테고리면 --skip-brand-gate)
+2026-08-22,kr,전기자전거,category,"전기자전거,전동자전거,e-bike,ebike,자전거",buy,100,0.0,1.0,28,0.01,통과,0,리플레이(0크레딧) — E0_ebike.csv 브랜드 27종 추가 후 · 디시/더쿠 노이즈 제외

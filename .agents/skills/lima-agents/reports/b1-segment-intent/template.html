@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B-1 · 연령별·성별 세그먼트 분석 · __CATEGORY__</title>
+<style>
+/* __BASE_CSS_INLINE__ */
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">B-1 · 연령별·성별 세그먼트 인텐트 분석</div>
+    <h1>__CATEGORY__ <span class="en">· __GL__</span></h1>
+    <div class="subline">사용자 검색 데이터 기반 · 연령대·성별로 관심사·KBF(Key Benefit Factor) 차이를 도출합니다.</div>
+    <div class="meta-row" id="meta-chips"></div>
+  </header>
+
+  <div class="kpis" id="kpi-row"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-view="overview">전체</button>
+    <button class="tab" data-view="age">연령대별</button>
+    <button class="tab" data-view="gender">성별</button>
+    <button class="tab" data-view="kbf">KBF 매트릭스</button>
+    <button class="tab" data-view="matrix">성별×연령</button>
+    <button class="tab" data-view="action">실행 권고</button>
+  </div>
+
+  <!-- 전체 뷰 -->
+  <section class="view active" data-view="overview">
+    <div class="card">
+      <h2>조사원 인사이트</h2>
+      <div class="q">데이터 조회 즉시 발견한 특이점</div>
+      <div id="insights-list"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>연령대별 볼륨 분포</h2>
+        <div class="chart-box sm"><div id="chart-age-donut" style="height:100%"></div></div>
+      </div>
+      <div class="card">
+        <h2>성별 볼륨 분포</h2>
+        <div class="chart-box sm"><div id="chart-gender-donut" style="height:100%"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>세그먼트 요약 · 볼륨 및 키워드 수</h2>
+      <table id="seg-table"></table>
+    </div>
+  </section>
+
+  <!-- 연령대별 뷰 -->
+  <section class="view" data-view="age">
+    <div class="card">
+      <h2>연령대별 TOP 관심 키워드</h2>
+      <div class="q">각 연령대에 유의미하게 태그된 키워드 상위 10 · 볼륨 순</div>
+    </div>
+    <div class="grid3" id="age-cards"></div>
+  </section>
+
+  <!-- 성별 뷰 -->
+  <section class="view" data-view="gender">
+    <div class="card">
+      <h2>남녀 관심사 대조</h2>
+      <div class="q">여성 vs 남성 · 각각의 TOP 키워드</div>
+    </div>
+    <div class="grid2" id="gender-cards"></div>
+  </section>
+
+  <!-- KBF 매트릭스 뷰 -->
+  <section class="view" data-view="kbf">
+    <div class="card">
+      <h2>세그먼트별 KBF (Key Benefit Factor)</h2>
+      <div class="q">각 세그먼트가 중요시하는 편익 요인 · 볼륨 순</div>
+      <div class="chart-box lg"><div id="chart-kbf-matrix" style="height:100%"></div></div>
+      <div class="insight teal"><b>해석 팁</b> · 세그먼트마다 KBF 순위가 다르면 · 크리에이티브 소구점을 세그먼트별로 다르게 잡아야 함. 특정 편익이 특정 세그먼트에만 몰려 있으면 · 그 세그먼트 타겟팅 광고에 그 편익 강조.</div>
+    </div>
+    <div class="grid2" id="kbf-tables"></div>
+  </section>
+
+  <!-- 성별×연령 매트릭스 -->
+  <section class="view" data-view="matrix">
+    <div class="card">
+      <h2>성별 × 연령 교차 매트릭스</h2>
+      <div class="q">AND 조건 · 성별과 연령 둘 다 유의미하게 태그된 노드 · 셀 클릭 시 아래에 전체 키워드 표시</div>
+      <div id="cross-matrix"></div>
+      <div id="cross-detail" class="cross-detail" style="display:none;"></div>
+    </div>
+  </section>
+
+  <!-- 실행 권고 -->
+  <section class="view" data-view="action">
+    <div class="card">
+      <h2>실행 권고</h2>
+      <div class="q">데이터 기반 · 마케팅팀 액션 플랜</div>
+      <div id="action-list"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+// __CHART_HELPERS_INLINE__
+
+// __DATA_START__
+const DATA = /* CLAUDE: 여기 prepare.py 결과 JSON 주입 */ null;
+// __DATA_END__
+
+// ===== 렌더 =====
+function renderMetaChips(meta) {
+  const el = document.getElementById('meta-chips');
+  el.innerHTML = `
+    <span class="chip">시장 <b>${meta.gl.toUpperCase()}</b></span>
+    <span class="chip">전체 노드 <b>${limaFmtNum(meta.total_nodes)}</b></span>
+    <span class="chip">유저특성 태그 있는 키워드 <b>${limaFmtNum(meta.total_keywords_with_demo)}</b></span>
+    <span class="chip">크레딧 <b>${limaFmtNum(meta.total_credits)}</b></span>
+    <span class="chip muted">생성 ${meta.generated_at.split('T')[0]}</span>
+  `;
+}
+
+function renderKpis(data) {
+  const segs = data.segments;
+  const totalVol = segs.reduce((s, x) => s + x.total_volume, 0);
+  const genderSegs = segs.filter(s => s.kind === 'gender');
+  const ageSegs = segs.filter(s => s.kind === 'age');
+  const topGender = genderSegs.slice().sort((a,b)=>b.total_volume-a.total_volume)[0];
+  const topAge = ageSegs.slice().sort((a,b)=>b.total_volume-a.total_volume)[0];
+
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi rose"><div class="lab">지배 성별</div><div class="val">${topGender ? topGender.label : '-'}</div><div class="sub">${topGender ? topGender.share_pct + '%' : ''}</div></div>
+    <div class="kpi teal"><div class="lab">핵심 연령대</div><div class="val">${topAge ? topAge.label : '-'}</div><div class="sub">${topAge ? topAge.share_pct + '%' : ''}</div></div>
+    <div class="kpi gold"><div class="lab">태그된 키워드</div><div class="val">${limaFmtNum(data.meta.total_keywords_with_demo)}</div><div class="sub">전체 ${limaFmtNum(data.meta.total_nodes)}건 중</div></div>
+    <div class="kpi violet"><div class="lab">유저특성 태그 볼륨</div><div class="val">${limaFmtNum(totalVol)}</div><div class="sub">월평균 검색량 합계</div></div>
+  `;
+}
+
+function renderInsights(data) {
+  const el = document.getElementById('insights-list');
+  const kindColors = {
+    segment_dominance: 'teal',
+    kbf_gap: 'gold',
+    opportunity: 'violet',
+    risk: '',
+    rising: 'teal',
+  };
+  el.innerHTML = data.insights.map((ins, i) => `
+    <div class="insight ${kindColors[ins.kind] || ''}"><b>${i+1}. ${ins.title}</b><br>${ins.body}</div>
+  `).join('');
+}
+
+function renderSegTable(data) {
+  const rows = data.segments.map(s => `
+    <tr>
+      <td>${s.label}</td>
+      <td>${s.kind === 'gender' ? '성별' : '연령'}</td>
+      <td class="num">${limaFmtNum(s.keyword_count)}</td>
+      <td class="num">${limaFmtNum(s.total_volume)}</td>
+      <td class="num">${(s.share_pct ?? 0).toFixed(1)}%</td>
+    </tr>
+  `).join('');
+  document.getElementById('seg-table').innerHTML = `
+    <thead><tr><th>세그먼트</th><th>구분</th><th class="right">키워드 수</th><th class="right">볼륨 합계</th><th class="right">비중</th></tr></thead>
+    <tbody>${rows}</tbody>
+  `;
+}
+
+function renderDonuts(data) {
+  const ageSegs = data.segments.filter(s => s.kind === 'age' && s.total_volume > 0);
+  const genderSegs = data.segments.filter(s => s.kind === 'gender' && s.total_volume > 0);
+  limaDonut(document.getElementById('chart-age-donut'),
+    ageSegs.map(s => s.label), ageSegs.map(s => s.total_volume), LIMA_SERIES, {label: '연령대별 검색량 분포'});
+  limaDonut(document.getElementById('chart-gender-donut'),
+    genderSegs.map(s => s.label), genderSegs.map(s => s.total_volume), [LIMA_PALETTE.rose, LIMA_PALETTE.blue], {label: '성별 검색량 분포'});
+}
+
+// 카드 안 미니 가로 막대
+function renderSegBarInCard(elId, kws, color) {
+  limaHBar(document.getElementById(elId), kws.map(k => k.keyword),
+    [{label: '검색량', data: kws.map(k => k.volume), color}], {label: '세그먼트 TOP 키워드 검색량'});
+}
+
+function renderAgeCards(data) {
+  const ageSegs = data.segments.filter(s => s.kind === 'age');
+  const top = data.top_keywords_by_segment;
+  const container = document.getElementById('age-cards');
+  container.innerHTML = ageSegs.map((s, i) => {
+    const kws = (top[s.key] || []).slice(0, 10);
+    if (!kws.length) {
+      return `
+        <div class="card">
+          <h2>${s.label} <span class="en">데이터 없음</span></h2>
+          <div class="muted" style="padding:12px 0; font-size:12px;">유의미하게 태그된 키워드 없음</div>
+        </div>`;
+    }
+    const color = LIMA_SERIES[(i + 2) % LIMA_SERIES.length];
+    const chartId = `age-bar-${s.key}`;
+    return `
+      <div class="card" style="border-top: 3px solid ${color};">
+        <h2>${s.label} <span class="en">${limaFmtNum(s.total_volume)} vol · ${s.keyword_count} kws</span></h2>
+        <div id="${chartId}" style="margin-top:8px;"></div>
+      </div>
+    `;
+  }).join('');
+  // 카드 append 이후에 차트 렌더 (DOM에 자리 div가 있어야 함)
+  ageSegs.forEach((s, i) => {
+    const kws = (top[s.key] || []).slice(0, 10);
+    if (!kws.length) return;
+    const color = LIMA_SERIES[(i + 2) % LIMA_SERIES.length];
+    renderSegBarInCard(`age-bar-${s.key}`, kws, color);
+  });
+}
+
+function renderGenderCards(data) {
+  const gSegs = data.segments.filter(s => s.kind === 'gender');
+  const top = data.top_keywords_by_segment;
+  const container = document.getElementById('gender-cards');
+  container.innerHTML = gSegs.map((s, i) => {
+    const kws = (top[s.key] || []).slice(0, 12);
+    if (!kws.length) {
+      return `
+        <div class="card">
+          <h2>${s.label} <span class="en">데이터 없음</span></h2>
+        </div>`;
+    }
+    const color = i === 0 ? LIMA_PALETTE.rose : LIMA_PALETTE.blue;
+    const chartId = `gender-bar-${s.key}`;
+    return `
+      <div class="card" style="border-top: 3px solid ${color};">
+        <h2>${s.label} <span class="en">${limaFmtNum(s.total_volume)} vol · ${s.keyword_count} kws</span></h2>
+        <div id="${chartId}" style="margin-top:8px;"></div>
+      </div>
+    `;
+  }).join('');
+  gSegs.forEach((s, i) => {
+    const kws = (top[s.key] || []).slice(0, 12);
+    if (!kws.length) return;
+    const color = i === 0 ? LIMA_PALETTE.rose : LIMA_PALETTE.blue;
+    renderSegBarInCard(`gender-bar-${s.key}`, kws, color);
+  });
+}
+
+function renderKbfMatrix(data) {
+  const kbfBySeg = data.kbf_by_segment;
+  const segs = data.segments;
+  // 모든 KBF label union
+  const labelSet = new Set();
+  Object.values(kbfBySeg).forEach(arr => arr.forEach(k => labelSet.add(k.label)));
+  const labels = [...labelSet];
+  // 각 세그먼트 = 데이터셋
+  const datasets = segs.filter(s => (kbfBySeg[s.key] || []).length > 0).map((s, i) => {
+    const map = new Map((kbfBySeg[s.key] || []).map(k => [k.label, k.volume]));
+    return {
+      label: s.label,
+      data: labels.map(l => map.get(l) || 0),
+      color: LIMA_SERIES[i % LIMA_SERIES.length],
+    };
+  });
+  limaVBar(document.getElementById('chart-kbf-matrix'), labels, datasets, {label: '세그먼트별 편익 요인 검색량'});
+
+  // 세그먼트별 KBF 표
+  const tables = segs.filter(s => (kbfBySeg[s.key] || []).length > 0).map(s => {
+    const rows = (kbfBySeg[s.key] || []).slice(0, 8).map(k => `
+      <tr><td>${k.label}</td><td class="num">${limaFmtNum(k.volume)}</td><td class="num">${k.keyword_count}</td></tr>
+    `).join('');
+    return `
+      <div class="card">
+        <h2>${s.label} · KBF 랭킹</h2>
+        <table>
+          <thead><tr><th>편익 요인</th><th class="right">볼륨</th><th class="right">키워드 수</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('kbf-tables').innerHTML = tables;
+}
+
+let _crossSelected = null;  // "g|a" · 현재 선택된 셀
+function renderCrossMatrix(data) {
+  const cross = data.cross_matrix.gender_x_age;
+  const ages = [...new Set(cross.map(c => c.age))];
+  const ageLabel = {a13:'10대',a20:'20대',a25:'25~',a30:'30대',a40:'40대',a50:'50대+'};
+  const maxVol = Math.max(1, ...cross.map(c => c.volume));
+
+  let html = '<table class="cross-table"><thead><tr><th></th>' + ages.map(a=>`<th class="right">${ageLabel[a]||a}</th>`).join('') + '</tr></thead><tbody>';
+  ['female', 'male'].forEach(g => {
+    const label = g === 'female' ? '여성' : '남성';
+    html += `<tr><td><b>${label}</b></td>`;
+    ages.forEach(a => {
+      const cell = cross.find(c => c.gender === g && c.age === a) || {volume:0, keyword_count:0, top_keywords:[]};
+      const intensity = maxVol ? cell.volume / maxVol : 0;
+      const bg = g === 'female'
+        ? `rgba(200, 91, 127, ${(0.08 + intensity * 0.5).toFixed(2)})`
+        : `rgba(59, 127, 191, ${(0.08 + intensity * 0.5).toFixed(2)})`;
+      const hasKws = (cell.top_keywords || []).length > 0;
+      const preview = (cell.top_keywords || []).slice(0, 3).map(k => k.keyword).join(' · ') || '-';
+      const sel = _crossSelected === `${g}|${a}` ? ' selected' : '';
+      const cellStyle = `background:${bg}; ${hasKws ? 'cursor:pointer;' : ''}`;
+      const clickAttr = hasKws ? `onclick="expandCrossCell('${g}', '${a}')"` : '';
+      html += `<td class="num cross-cell${sel}" style="${cellStyle}" ${clickAttr}><b>${limaFmtNum(cell.volume)}</b><br><span class="muted" style="font-size:10.5px;">${cell.keyword_count} kws</span><br><span class="muted" style="font-size:10px;">${preview}</span></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('cross-matrix').innerHTML = html;
+}
+
+function expandCrossCell(gender, age) {
+  const key = `${gender}|${age}`;
+  // 같은 셀 재클릭 = 닫기
+  if (_crossSelected === key) {
+    _crossSelected = null;
+    document.getElementById('cross-detail').style.display = 'none';
+    renderCrossMatrix(DATA);
+    return;
+  }
+  _crossSelected = key;
+  renderCrossMatrix(DATA);
+  const cell = DATA.cross_matrix.gender_x_age.find(c => c.gender === gender && c.age === age);
+  if (!cell) return;
+  const ageLabel = {a13:'10대',a20:'20대',a25:'25~',a30:'30대',a40:'40대',a50:'50대+'};
+  const gLabel = gender === 'female' ? '여성' : '남성';
+  const list = cell.top_keywords || [];
+  const el = document.getElementById('cross-detail');
+  el.innerHTML = `
+    <div class="cross-detail-header">
+      <div class="cross-detail-title"><b>${gLabel} × ${ageLabel[age] || age}</b> · ${cell.keyword_count}개 키워드 · 총 볼륨 ${limaFmtNum(cell.volume)}</div>
+      <button class="cross-detail-close" onclick="expandCrossCell('${gender}','${age}')" title="닫기">×</button>
+    </div>
+    <div class="cross-detail-list">
+      ${list.map((k, i) => `
+        <div class="cross-detail-item">
+          <span class="rank">${i + 1}</span>
+          <span class="kw">${k.keyword}</span>
+          <span class="vol">${limaFmtNum(k.volume)}</span>
+        </div>
+      `).join('') || '<div class="muted">키워드 없음</div>'}
+    </div>
+  `;
+  el.style.display = 'block';
+  // 부드럽게 스크롤
+  el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function renderActionList(data) {
+  // 조사원 톤 · 세그먼트 지배·기회·리스크 기반 액션 문구 자동 생성
+  const segs = data.segments;
+  const ageSegs = segs.filter(s => s.kind === 'age' && s.total_volume > 0).sort((a,b)=>b.total_volume-a.total_volume);
+  const gSegs = segs.filter(s => s.kind === 'gender' && s.total_volume > 0).sort((a,b)=>b.total_volume-a.total_volume);
+  const topKbf = {};
+  Object.entries(data.kbf_by_segment).forEach(([k, arr]) => {
+    if (arr.length) topKbf[k] = arr[0].label;
+  });
+
+  const actions = [];
+  if (gSegs[0]) actions.push({
+    prio: '최우선',
+    title: `${gSegs[0].label} 대상 크리에이티브 확대`,
+    body: `총 볼륨의 ${gSegs[0].share_pct}%를 차지 · 인플루언서·매체 이 세그먼트 우선. 대표 관심 키워드는 카드뷰 참조.`
+  });
+  if (ageSegs[0]) actions.push({
+    prio: '최우선',
+    title: `${ageSegs[0].label} 페르소나 딥다이브`,
+    body: `연령 태그 중 최대 · KBF는 '${topKbf[ageSegs[0].key] || '-'}' · 이 편익을 크리에이티브 소구점으로.`
+  });
+  const smallAge = ageSegs.filter(s => s.total_volume < ageSegs[0].total_volume * 0.2).slice(0, 2);
+  smallAge.forEach(s => actions.push({
+    prio: '기회',
+    title: `${s.label} 세그먼트 진입 검토`,
+    body: `볼륨 극소 · 대형 브랜드가 놓쳤을 가능성 · 특화 콘텐츠·니치 광고 실험 대상.`
+  }));
+  actions.push({
+    prio: '후속 조사',
+    title: '세그먼트별 CEP 딥다이브',
+    body: `현재 KBF는 키워드 정규식 기반 간이 분류 · 정확한 CEP 7W 분석은 D-1 (준비 중)에서 진행 예정.`
+  });
+
+  const prioColor = {최우선:'rose', 기회:'teal', '후속 조사':'violet'};
+  document.getElementById('action-list').innerHTML = actions.map(a => `
+    <div class="insight ${prioColor[a.prio]||''}"><b>[${a.prio}] ${a.title}</b><br>${a.body}</div>
+  `).join('');
+}
+
+// ===== 초기화 =====
+function init() {
+  if (!DATA) {
+    document.body.innerHTML = '<div style="padding:40px; font-family:sans-serif;">데이터가 주입되지 않았습니다.</div>';
+    return;
+  }
+  renderMetaChips(DATA.meta);
+  renderKpis(DATA);
+  renderInsights(DATA);
+  renderSegTable(DATA);
+  renderDonuts(DATA);
+  renderAgeCards(DATA);
+  renderGenderCards(DATA);
+  renderKbfMatrix(DATA);
+  renderCrossMatrix(DATA);
+  renderActionList(DATA);
+  limaWireTabs();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

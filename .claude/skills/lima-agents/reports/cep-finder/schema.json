@@ -1,0 +1,470 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "CEP Finder labels.json — 렌더러에 주는 판단·서사 계약 (core/labels.json)",
+ "description": "수치는 render.py가 run 폴더에서 산출한다. 이 파일은 판단이 개입하는 문장만 담는다(정의서 §4.4 분업). 모든 문자열은 인라인 HTML 허용(내부 작성물). 빈 슬롯·미실측은 지어내지 않고 grade=gap으로 둔다.",
+ "type": "object",
+ "required": [
+  "owner",
+  "lede",
+  "readiness",
+  "hubs",
+  "backlog"
+ ],
+ "properties": {
+  "title": {
+   "type": "string",
+   "description": "기본: '{category} 카테고리 진입점(CEP) 결정 리포트'"
+  },
+  "vertical_label": {
+   "type": "string",
+   "description": "eyebrow 표기, 예: 가전"
+  },
+  "owner": {
+   "type": "string",
+   "description": "실행 주체(필수) — 예: '중립(시장 조사)' / '자사 브랜드매니저 관점'. 발화에 없으면 프로필 기준값을 쓰고 그 사실을 적는다"
+  },
+  "query_date": {
+   "type": "string"
+  },
+  "connectors_line": {
+   "type": "string"
+  },
+  "used_credits": {
+   "type": "integer",
+   "description": "마지막 응답의 used_credits — 월간 누적(잔여 아님)"
+  },
+  "lede": {
+   "type": "string",
+   "description": "실제 수행한 단계만 1~2문장"
+  },
+  "readiness": {
+   "type": "object",
+   "required": [
+    "status",
+    "items"
+   ],
+   "properties": {
+    "status": {
+     "enum": [
+      "READY",
+      "READY WITH LIMITS",
+      "EXPAND",
+      "NARROW",
+      "NOT READY"
+     ]
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "한계 항목 — 게이트 warn·패싯 분리·미실측·이상치·검색≠구매"
+    }
+   }
+  },
+  "kpis": {
+   "type": "array",
+   "maxItems": 4,
+   "items": {
+    "type": "object",
+    "required": [
+     "label",
+     "value",
+     "desc"
+    ],
+    "properties": {
+     "label": {
+      "type": "string"
+     },
+     "value": {
+      "type": "string"
+     },
+     "desc": {
+      "type": "string"
+     }
+    }
+   },
+   "description": "생략 시 자동(헤드텀 월평균·상황형 합계·허브 성립·시즌 진폭)"
+  },
+  "facets": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "허브에서 분리할 C3 패싯 결합쿼리(엔진 segment_facet 플래그와 합집합)"
+  },
+  "canvas_families": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "string"
+   },
+   "description": "패밀리 카드 설명 문장 덮어쓰기"
+  },
+  "canvas_note": {
+   "type": "string"
+  },
+  "trend_note": {
+   "type": "string"
+  },
+  "season_note": {
+   "type": "string"
+  },
+  "hubs": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "label",
+     "status",
+     "bridges",
+     "narrative",
+     "slots"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "description": "CEP-{anchor}-{nn} 또는 엔진 F-id"
+     },
+     "label": {
+      "type": "string"
+     },
+     "short": {
+      "type": "string",
+      "description": "4분면 라벨(짧게)"
+     },
+     "status": {
+      "enum": [
+       "confirmed",
+       "candidate",
+       "grey"
+      ],
+      "description": "grey = 여정 미실측 등 근거 보강 필요"
+     },
+     "status_text": {
+      "type": "string"
+     },
+     "bridges": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "hub_graph.bridges의 combo 문자열 — 패밀리 허브를 구별성으로 세분할 때 부분집합"
+     },
+     "journey_anchor": {
+      "type": "string",
+      "description": "raw/paths_{anchor}.json 의 앵커. 생략 시 bridges 중 여정이 있는 첫 항목"
+     },
+     "narrative": {
+      "type": "string",
+      "description": "§4.4 서사 템플릿: {W4}가 · {W2}에 · {W3}에서 · {W1} 때문에 · {W5}와 함께"
+     },
+     "narrative_note": {
+      "type": "string"
+     },
+     "stats_extra": {
+      "type": "string",
+      "description": "통계 줄 끝에 덧붙일 문장(미달 결합형 등)"
+     },
+     "demo_note": {
+      "type": "string",
+      "description": "성연령 판독 — 구매 주체 가설은 반드시 '가정'으로 표기"
+     },
+     "slots": {
+      "type": "object",
+      "propertyNames": {
+       "enum": [
+        "W1",
+        "W2",
+        "W3",
+        "W4",
+        "W5",
+        "W6",
+        "W7"
+       ]
+      },
+      "additionalProperties": {
+       "type": "object",
+       "required": [
+        "text",
+        "grade"
+       ],
+       "properties": {
+        "text": {
+         "type": "string"
+        },
+        "grade": {
+         "enum": [
+          "measured",
+          "derived",
+          "assumption",
+          "gap"
+         ]
+        }
+       }
+      }
+     },
+     "coverage_note": {
+      "type": "string",
+      "description": "근거 품질(rank)·성립 요건·크로스 카테고리 메모"
+     },
+     "inherited": {
+      "type": "boolean",
+      "description": "타 run(품목 레벨) 허브를 상속해 회색 카드로 표시 — volume·yoy·source를 labels가 준다"
+     },
+     "volume": {
+      "type": "integer"
+     },
+     "yoy": {
+      "type": "number"
+     },
+     "source": {
+      "type": "string"
+     },
+     "own_bridges": {
+      "type": "string"
+     },
+     "bridges_note": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "decision_sub": {
+   "type": "string"
+  },
+  "decision": {
+   "type": "object",
+   "properties": {
+    "CEP": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "NI": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "KBF": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "CST": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "AVD": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "RTB": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "HOLD": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "해석 보류 카드 — 있을 때만"
+    }
+   }
+  },
+  "journey_sub": {
+   "type": "string"
+  },
+  "journeys": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "anchor"
+    ],
+    "properties": {
+     "anchor": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "stages": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "n",
+        "t",
+        "q"
+       ],
+       "properties": {
+        "n": {
+         "type": "string"
+        },
+        "t": {
+         "type": "string"
+        },
+        "q": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "note": {
+      "type": "string"
+     }
+    }
+   },
+   "description": "앵커별 단계 서술. 생략 시 선행/후행/태그/종착 자동 블록"
+  },
+  "matrix_note": {
+   "type": "string"
+  },
+  "quadrant_sub": {
+   "type": "string"
+  },
+  "backlog": {
+   "type": "object",
+   "properties": {
+    "now": {
+     "$ref": "#/definitions/rows"
+    },
+    "watch": {
+     "$ref": "#/definitions/rows"
+    },
+    "risk": {
+     "$ref": "#/definitions/rows"
+    }
+   }
+  },
+  "data_files_extra": {
+   "type": "string"
+  },
+  "gaps_line": {
+   "type": "string"
+  },
+  "guardrails_line": {
+   "type": "string"
+  },
+  "hubs_note": {
+   "type": "string",
+   "description": "허브가 0일 때 카드 자리에 표시할 문장"
+  },
+  "longtail_note": {
+   "type": "string",
+   "description": "v0.5 S3 롱테일 코퍼스 판독(언어층 규모 합산 금지 고지 유지)"
+  },
+  "merge_note": {
+   "type": "string",
+   "description": "v0.5 S6 병합 판정 블록 판독(승인 세션 결론)"
+  },
+  "hypothesis_note": {
+   "type": "string",
+   "description": "v0.5 S5 가설 블록 판독"
+  },
+  "feature_note": {
+   "type": "string",
+   "description": "v0.4 B8 Feature Association 판독 문장"
+  },
+  "switching_note": {
+   "type": "string",
+   "description": "v0.3 B7 스위칭 블록 판독 문장(세션 인접 집계 고지 유지)"
+  },
+  "context_matrix_note": {
+   "type": "string",
+   "description": "v0.3 B9 Context×브랜드 매트릭스 판독 문장(검색량 기준 근사 고지 유지)"
+  },
+  "extra_sections": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "title",
+     "html"
+    ],
+    "properties": {
+     "no": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "hint": {
+      "type": "string"
+     },
+     "grade": {
+      "enum": [
+       "measured",
+       "derived"
+      ]
+     },
+     "html": {
+      "type": "string"
+     }
+    }
+   },
+   "description": "푸터 앞 자유 섹션 — 문제점 분석·방법론 진단 등"
+  },
+  "tag_lexicon": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "string"
+   },
+   "description": "여정 노드 태그 정규식 덮어쓰기(품목 문맥)"
+  },
+  "benefit_note": {
+   "type": "string",
+   "description": "v0.6 B13 — 편익 7W 분해 표 각주(기본: 엔진 note)"
+  },
+  "provenance_note": {
+   "type": "string",
+   "description": "v0.6 — 부록 A3 지표 산출 근거표 각주"
+  }
+ },
+ "definitions": {
+  "rows": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "title",
+     "evidence",
+     "action"
+    ],
+    "properties": {
+     "title": {
+      "type": "string"
+     },
+     "scale": {
+      "enum": [
+       "L",
+       "M",
+       "S"
+      ]
+     },
+     "evidence": {
+      "type": "string",
+      "description": "측정 수치 인용 필수"
+     },
+     "action": {
+      "type": "string"
+     },
+     "veil": {
+      "type": "string",
+      "description": "분면·tier·시즌 창·가정·가드레일 — §10.4 정렬 사유를 반드시 적는다"
+     }
+    }
+   }
+  }
+ }
+}

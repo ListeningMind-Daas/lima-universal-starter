@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Cluster Sessions</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif; background: #f5f2fb; color: #333; overflow: hidden; display: flex; flex-direction: column; }
+  .session-tabs { display: flex; align-items: stretch; padding: 0 12px; background: #f5f2fb; border-bottom: 1px solid #e5deef; overflow-x: auto; flex-shrink: 0; }
+  .session-tabs::-webkit-scrollbar { height: 3px; }
+  .session-tabs::-webkit-scrollbar-thumb { background: #c8bde0; border-radius: 2px; }
+  .session-tab { padding: 10px 18px 10px 14px; font-size: 12.5px; font-weight: 500; color: #666; cursor: pointer; border: none; background: transparent; border-bottom: 2.5px solid transparent; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .session-tab:hover { color: #333; background: rgba(124,94,196,0.06); }
+  .session-tab.active { color: #7c5ec4; border-bottom-color: #7c5ec4; background: #fff; font-weight: 600; }
+  .session-tab .tab-idx { font-size: 10px; color: #aaa; font-weight: 700; margin-right: 2px; }
+  .session-tab.active .tab-idx { color: #7c5ec4; }
+  .session-tab .tab-meta { font-size: 10px; color: #999; margin-left: 3px; }
+  .session-info { padding: 6px 14px; font-size: 11px; color: #7c5ec4; align-self: center; font-weight: 500; }
+  .frame-wrap { flex: 1; position: relative; overflow: hidden; background: #fff; }
+  iframe { width: 100%; height: 100%; border: none; display: block; }
+</style>
+</head>
+<body>
+<div class="session-tabs" id="session-tabs"></div>
+<div class="frame-wrap">
+  <iframe id="viz-frame" title="Cluster Visualization" sandbox="allow-scripts allow-same-origin"></iframe>
+</div>
+
+<script>
+// __SHELL_DATA_START__
+// CLAUDE: 아래에 세션 배열 주입.
+// 각 요소: { seed, seed_index, meta, srcdoc } · srcdoc은 완전한 inner HTML (template + 데이터 주입)
+const CLUSTER_SESSIONS = [];
+let ACTIVE_SESSION_IDX = 0;
+// __SHELL_DATA_END__
+
+function renderTabs() {
+  const tabsEl = document.getElementById('session-tabs');
+  tabsEl.innerHTML = '';
+  CLUSTER_SESSIONS.forEach((sess, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'session-tab' + (idx === ACTIVE_SESSION_IDX ? ' active' : '');
+    btn.innerHTML = `
+      <span class="tab-idx">${idx + 1}</span>
+      <span>${sess.seed}</span>
+      <span class="tab-meta">${sess.meta.nodes ?? '?'}·${sess.meta.clusters ?? '?'}</span>
+    `;
+    btn.addEventListener('click', () => switchSession(idx));
+    tabsEl.appendChild(btn);
+  });
+  if (CLUSTER_SESSIONS.length > 1) {
+    const info = document.createElement('span');
+    info.className = 'session-info';
+    info.textContent = `· 탐색 세션 ${CLUSTER_SESSIONS.length}개`;
+    tabsEl.appendChild(info);
+  }
+}
+
+function switchSession(idx) {
+  if (idx === ACTIVE_SESSION_IDX) return;
+  ACTIVE_SESSION_IDX = idx;
+  loadActiveFrame();
+  renderTabs();
+}
+
+function loadActiveFrame() {
+  const frame = document.getElementById('viz-frame');
+  frame.srcdoc = CLUSTER_SESSIONS[ACTIVE_SESSION_IDX].srcdoc;
+}
+
+renderTabs();
+loadActiveFrame();
+</script>
+</body>
+</html>

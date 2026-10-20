@@ -1,0 +1,11 @@
+{
+  "skill_name": "listeningmind-universal",
+  "evals": [
+    {"id": 1, "prompt": "리포트· 전기자전거 한국 시장 세그먼트 리포트 — gl=kr / 실행 주체: 중립 조사 / 수요·트렌드 주축 + 경쟁 SoV 보강 / 크레딧 6만 이내 / HTML + Artifact",
+     "expected_output": "시드 검증(seed_check) → 예상 크레딧 고지 → 직렬 수집 → 준비도 배너(롱테일 커버리지·동의어 dedup·허브 제외) → render_report.py로 렌더한 HTML(실행 주체 배지·KPI·trend·sov·backlog·푸터 크레딧) → 90_Output 저장·Artifact", "files": []},
+    {"id": 2, "prompt": "유학 준비하는 사람들이 검색에서 어떤 경로로 움직이는지, 어디서 이탈하는지 알고 싶어. 미국 시장도 같이.",
+     "expected_output": "검색여정 잡 라우팅 · gl=kr/us 분리 호출 · '유학' 단독 시드 검증·결합형 대체 · us demography 사양 고지 · path_finder limit 통제·비용 고지 · 집계 그래프 표현 · 텍스트 답변 + 다음 조사 추천", "files": []},
+    {"id": 3, "prompt": "반려동물 사료 브랜드 검색 점유율 좀 뽑아줘. 우리는 로얄캐닌 브랜드 관점.",
+     "expected_output": "경쟁·브랜드 잡 · brand-map 작성(×/○ 별칭·채널 분리·기업명 단독 제외) · 모델/라인 쿼리 수확 후 브랜드+라인 합산 SoV · '검색량 기준 근사' 표기 · 매칭 별칭 공개 · 실행 주체=로얄캐닌 관점 백로그 · 규제(사료 효능) 언급 시 가드레일", "files": []}
+  ]
+}

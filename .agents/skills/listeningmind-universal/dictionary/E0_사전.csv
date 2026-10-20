@@ -1,0 +1,28 @@
+class,label,aliases,note
+Noise,tv,티비|television,매체 다의 — 단독 금지 · 대체: tv 추천·스마트tv·best tv (가전 E2 실측 2026-08-12)
+Noise,이사,moving,생애 이벤트 단독 금지 — 137경로 카테고리 0건 · 대체: 이벤트+카테고리 결합형
+Noise,신혼,newlywed,생애 이벤트 단독 금지 · 대체: 신혼 가전 리스트 등 결합형
+Noise,출산,,생애 이벤트 단독 금지 · 결합형만
+Noise,소음,noise,문제·고민 단독 금지 · 대체: 문제+해결동사/카테고리
+Noise,전기요금,,문제·고민 단독 금지 · 결합형만
+Noise,그램,gram,단위 충돌(무게) · 결합형만 집계
+Noise,드럼,drum,악기·드럼통 충돌 · keep_only: 드럼세탁기
+Noise,미니,mini,자동차 MINI·일반 형용 충돌 · 결합형만
+Noise,당근,,당근마켓 충돌 · 결합형만 (그로서리 E1 실측)
+Noise,멜론,,멜론 차트·티켓 충돌 · 결합형만
+Noise,피망,,피망 게임 충돌 · 결합형만
+Noise,에어컨장,,밈(인물 짤) — 85경로 전량 노이즈 · 폐기
+Noise,김,,단음절 식품명 — 인명·수증기 충돌 · 결합형만
+Noise,무,,단음절 — 무료·무선 충돌 · 결합형만
+Noise,배,,단음절 — 선박·복부·배송 충돌 · 결합형만
+Noise,dryer,,hair dryer 지배(us) · keep_only: clothes dryer·ventless dryer
+Channel,쿠팡,coupang|쿠팡 로켓|로켓배송,판매·중개 채널 — SoV 분모 제외 (규모 참고)
+Channel,네이버쇼핑,네이버 쇼핑|naver shopping,판매·중개 채널 — SoV 분모 제외
+Channel,amazon,아마존,이중 성격 — fire tv 결합=기기 브랜드 / "at amazon"=채널 (문맥 구분)
+Channel,ebay,이베이,범용 마켓플레이스 허브 — cluster 총량에서 제외
+Channel,best buy,베스트바이,범용 리테일 허브(us) — cluster 총량에서 제외
+Channel,코스트코,costco|코스트코 홀세일,창고형 할인점 판매 채널 — 브랜드 지명 분모 제외
+Reviewer,디시,dcinside|디시인사이드,커뮤니티 — 브랜드 아님 · RTB 원천
+Reviewer,클리앙,clien,커뮤니티 — RTB 원천
+Reviewer,reddit,레딧,커뮤니티(us) — RTB 원천
+Reviewer,나무위키,namu wiki,정보 허브 — 노이즈/RTB 경계 · 단독 노드는 총량 제외

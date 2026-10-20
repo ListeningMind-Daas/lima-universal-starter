@@ -1,0 +1,262 @@
+<!--
+  listeningmind-universal · HTML 리포트 표준 템플릿 (산업 무관)
+
+  출처: 업권별 리포트 템플릿의 CSS·토큰을 일반화하고 섹션 마커를 추가.
+
+  렌더 계약 — 이 파일은 scripts/render_report.py 가 data.json 으로 채운다. 셸/sed/f-string 직접 주입 금지.
+  - 플레이스홀더: 이중 중괄호 KEY (렌더러가 HTML-escape 또는 _HTML 접미사면 원문 삽입)
+  - 섹션 마커: [SECTION:id] … [/SECTION:id] 형태의 HTML 주석 — data.json에 해당 키가 없으면 통째로 제거
+      trend · tam · sov · decision · intent_mix · journey · backlog (masthead·banner·kpis·footer는 항상)
+  - 섹션 번호(NO)는 포함된 순서대로 01부터 렌더러가 재부여
+  - 차트는 inline SVG (외부 CDN 금지 — 이유는 _shared-core.md §7). 수요 차트는 기본 최근 24개월. dual-axis 금지.
+  - 스파인: 마스트헤드(실행 주체 필수) → 리드 → 준비도 배너 → KPI 4장 → 섹션들 → 기회 백로그 → 부록(호출 순서·호출 로그·비용 보고서) → 푸터(방법·크레딧·가드레일)
+  - 분석 단위: 세그먼트(기본) = trend → sov → decision → journey → backlog / 카테고리 = trend → tam → sov(Generic 분리) → intent_mix → backlog
+  - 헤딩: "친화적 한국어 명사구 + (표준 용어)" 병기. 실행 주체·특기 부제는 "— " 뒤에.
+  - 수치마다 MEASURED/DERIVED 배지. SoV는 "검색량 기준 근사". 가정은 본문에 "(가정)".
+  - 크레딧: 이번 분석 소진(total_cost 합산) + 월간 누적(used_credits — 잔여 아님). "계정 누적" 표기 금지.
+  - 완성 파일은 90_Output/대상-유형-YYYY-MM-DD.html → Artifact 게시.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+:root{
+  color-scheme: light;
+  --paper:#fcfcfb; --card:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --ink3:#8a887f;
+  --line:#e7e6e0; --accent:#2a78d6; --accent-soft:#eaf2fc;
+  --s-1:#2a78d6; --s-2:#eb6834; --s-3:#1baf7a;
+  --warn-bg:#faf6ec; --warn-bd:#e3d9b8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --paper:#161615; --card:#1e1e1c; --ink:#ffffff; --ink2:#c3c2b7; --ink3:#8f8e85;
+    --line:#33332f; --accent:#3987e5; --accent-soft:#1c2a3d;
+    --s-1:#3987e5; --s-2:#d95926; --s-3:#199e70;
+    --warn-bg:#26231a; --warn-bd:#4a4430;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:#161615; --card:#1e1e1c; --ink:#ffffff; --ink2:#c3c2b7; --ink3:#8f8e85;
+  --line:#33332f; --accent:#3987e5; --accent-soft:#1c2a3d;
+  --s-1:#3987e5; --s-2:#d95926; --s-3:#199e70;
+  --warn-bg:#26231a; --warn-bd:#4a4430;
+}
+body{background:var(--paper);color:var(--ink);
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  line-height:1.6;margin:0;padding:0 20px 80px;}
+.wrap{max-width:960px;margin:0 auto;}
+.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:700;margin:48px 0 8px;}
+h1{font-size:32px;line-height:1.25;margin:0 0 6px;text-wrap:balance;font-weight:800;}
+.sub{color:var(--ink2);font-size:14.5px;margin:0 0 4px;}
+.owner{display:inline-block;margin-top:10px;padding:4px 12px;border:1px solid var(--accent);border-radius:20px;
+  font-size:12.5px;font-weight:700;color:var(--accent);}
+.lede{font-size:15.5px;color:var(--ink);max-width:68ch;margin:16px 0 0;}
+.lede b{color:var(--accent);}
+.sc{display:inline-block;font-size:10.5px;font-weight:750;padding:1px 7px;border-radius:4px;margin-right:5px;vertical-align:1px;}
+.sc-l{background:var(--accent-soft);color:var(--accent);}
+.sc-m{background:var(--line);color:var(--ink2);}
+.sc-s{background:transparent;border:1px solid var(--line);color:var(--ink3);}
+h2{font-size:20px;margin:0 0 4px;font-weight:750;}
+.shead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.shead .no{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:12px;color:var(--ink3);}
+.shead .hint{margin-left:auto;font-size:12px;color:var(--ink3);}
+.badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:20px;vertical-align:2px;}
+.b-measured{background:var(--accent-soft);color:var(--accent);}
+.b-derived{background:var(--line);color:var(--ink2);}
+.banner{margin:28px 0 0;padding:12px 16px;border:1px solid var(--warn-bd);background:var(--warn-bg);border-radius:8px;font-size:13.5px;color:var(--ink2);}
+.banner b{color:var(--ink);}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:24px 0 0;}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;}
+.kpi .l{font-size:12px;color:var(--ink3);letter-spacing:.04em;font-weight:600;}
+.kpi .v{font-size:27px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0 0;line-height:1.2;}
+.kpi .d{font-size:12.5px;color:var(--ink2);margin-top:2px;}
+.up{color:var(--s-3);font-weight:700;}
+.down{color:var(--s-2);font-weight:700;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin:20px 0 0;}
+.card .note{font-size:12.5px;color:var(--ink3);margin-top:10px;}
+#provenance h3{font-size:15px;margin:20px 0 6px;}#provenance ol{padding-left:22px;font-size:13.5px;line-height:1.7;margin:0;}#provenance code{font-size:12.5px;}#provenance td,#provenance th{word-break:keep-all;}
+.chartbox{overflow-x:auto;margin-top:14px;}
+svg{display:block;}
+svg text{font-family:inherit;font-variant-numeric:tabular-nums;}
+.grid6{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px;}
+.dcard{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--paper);}
+.dcard h3{margin:0 0 6px;font-size:14px;letter-spacing:.03em;}
+.dcard h3 span{color:var(--ink3);font-weight:600;font-size:12px;margin-left:6px;}
+.dcard ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink2);}
+.dcard li{margin:3px 0;}
+.dcard.noise{opacity:.65;border-style:dashed;}
+.dcard .flag{font-size:10.5px;color:var(--s-2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px;}
+.bar-rows{display:flex;flex-direction:column;margin-top:14px;}
+.bar-row{display:grid;grid-template-columns:150px 1fr 90px 70px;align-items:center;gap:10px;padding:6px 0;}
+.bar-row.head{padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:4px;font-size:11px;color:var(--ink3);}
+.bar-row .name{font-size:12.5px;font-weight:650;line-height:1.3;color:var(--ink);}
+.bar-row .name .cat{display:block;font-weight:400;font-size:10px;color:var(--ink3);}
+.bar-row .name .cat.channel{color:var(--s-2);}
+.bar-track{background:var(--paper);border-radius:3px;height:16px;position:relative;overflow:hidden;border:1px solid var(--line);}
+.bar-fill{height:100%;background:var(--s-1);border-radius:3px 0 0 3px;}
+.bar-fill.channel{background:var(--s-2);}
+.bar-fill.generic{background:var(--ink3);opacity:.45;}
+.bar-row .share{font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink2);text-align:right;}
+.bar-row .trend{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;color:var(--ink3);}
+.bar-row .trend.up{color:var(--s-3);}
+.bar-row .trend.down{color:var(--s-2);}
+.flow{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:stretch;}
+.stage{flex:1 1 160px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--paper);min-width:150px;}
+.stage .n{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.1em;}
+.stage .t{font-weight:750;font-size:14.5px;margin:2px 0 4px;}
+.stage .q{font-size:12.5px;color:var(--ink2);}
+.stage .q code{background:var(--line);border-radius:4px;padding:0 5px;font-size:11.5px;}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:14px;}
+th{text-align:left;font-size:12px;color:var(--ink3);letter-spacing:.05em;border-bottom:2px solid var(--line);padding:8px 10px;}
+td{border-bottom:1px solid var(--line);padding:9px 10px;vertical-align:top;color:var(--ink2);}
+td:first-child{color:var(--ink);font-weight:650;}
+tr.group td{border-bottom:none;padding:16px 10px 4px;font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.05em;}
+tr.group.g-now td{color:var(--s-3);}
+tr.group.g-watch td{color:var(--accent);}
+tr.group.g-risk td{color:var(--s-2);}
+.veil{display:block;font-size:11.5px;color:var(--ink3);margin-top:3px;}
+.legend{display:inline-flex;align-items:center;gap:4px;margin-right:10px;}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+.foot{margin-top:36px;font-size:12.5px;color:var(--ink3);border-top:1px solid var(--line);padding-top:18px;}
+.foot b{color:var(--ink2);}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:4px 9px;border-radius:6px;opacity:0;transition:opacity .12s;font-variant-numeric:tabular-nums;z-index:9;}
+@media (prefers-reduced-motion: reduce){.tip{transition:none;}}
+@media (max-width:640px){.bar-row{grid-template-columns:110px 1fr 64px 56px;} h1{font-size:26px;}}
+</style>
+
+<div class="wrap">
+  <!-- ═══ 마스트헤드 (항상) ═══ -->
+  <div class="eyebrow">LISTENINGMIND · {{EYEBROW}}</div>
+  <h1>{{TITLE}}</h1>
+  <p class="sub">{{SCOPE_LINE}}</p>
+  <p class="sub">{{CONNECTORS_LINE}}</p>
+  <span class="owner">실행 주체 · {{OWNER}}</span>
+
+  <!-- ═══ 리드 (항상) — 실제 수행한 잡·커넥터만 1~2문장 ═══ -->
+  <p class="lede">{{LEDE_HTML}} 모든 수치는 <b>MEASURED</b>(도구 응답값) · <b>DERIVED</b>(계산·해석값)로 구분 표기합니다.</p>
+
+  <!-- ═══ 준비도 배너 (항상 · readiness-gate.md §4) ═══ -->
+  <div class="banner"><b>분석 준비도: {{READINESS_STATUS}}</b> — {{READINESS_LIMITS_HTML}} 이 경계 안에서만 결론을 제시합니다.</div>
+
+  <!-- ═══ KPI 4장 (항상 · 측정값 우선) ═══ -->
+  <div class="kpis">
+    {{KPI_CARDS_HTML}}
+  </div>
+
+  <!-- SECTION:trend -->
+  <div class="card">
+    <div class="shead"><span class="no">{{NO}}</span><h2>수요 트렌드·시즌성(Demand &amp; Seasonality)</h2><span class="badge b-measured">MEASURED</span><span class="hint">수요·트렌드 잡 · keyword_info(all)</span></div>
+    <p class="sub">{{TREND_SUB}}</p>
+    <div class="chartbox">{{TREND_SVG_HTML}}</div>
+    <p class="note">읽기 — {{TREND_NOTE_HTML}} 검색량 기준이며 판매량이 아닙니다.</p>
+  </div>
+  <!-- /SECTION:trend -->
+
+  <!-- SECTION:tam -->
+  <div class="card">
+    <div class="shead"><span class="no">{{NO}}</span><h2>시장 규모·세그먼트 구성(TAM)</h2><span class="badge b-derived">DERIVED</span><span class="hint">카테고리 리포트 · keyword_info 합산(노이즈·동의어 dedup 후)</span></div>
+    <p class="sub">{{TAM_SUB}}</p>
+    <div class="bar-rows">
+      <div class="bar-row head"><span></span><span>세그먼트 검색량(월평균)</span><span style="text-align:right;">구성비</span><span style="text-align:right;">YoY</span></div>
+      {{TAM_ROWS_HTML}}
+    </div>
+    <p class="note">{{TAM_NOTE_HTML}}</p>
+  </div>
+  <!-- /SECTION:tam -->
+
+  <!-- SECTION:sov -->
+  <div class="card">
+    <div class="shead"><span class="no">{{NO}}</span><h2>브랜드별 검색 점유율(SoV)</h2><span class="badge b-measured">MEASURED</span><span class="hint">경쟁·브랜드 잡 · {{SOV_HINT}}</span></div>
+    <p class="sub">브랜드 결합 쿼리군 월평균 검색량 · SoV는 <b>검색량 기준 근사</b>이며 판매 점유율이 아님 · {{SOV_BASIS}}</p>
+    <div class="bar-rows">
+      <div class="bar-row head"><span></span><span>브랜드검색 대비 비중</span><span style="text-align:right;">비중(근사)</span><span style="text-align:right;">3개월 추세</span></div>
+      {{SOV_ROWS_HTML}}
+    </div>
+    <p class="note">
+      <span class="legend"><i style="background:var(--s-1);"></i>제조사·브랜드</span>
+      <span class="legend"><i style="background:var(--s-2);"></i>판매·중개 채널(브랜드 아님 — 분모 제외)</span>
+      <span class="legend"><i style="background:var(--ink3);opacity:.45;"></i>Generic(무브랜드)</span><br>
+      DERIVED — 비중은 브랜드 별칭(약칭·영문·서브브랜드) 합산 기준 근사. 매칭 별칭: {{SOV_ALIASES_HTML}}. {{SOV_NOTE_HTML}}</p>
+  </div>
+  <!-- /SECTION:sov -->
+
+  <!-- SECTION:decision -->
+  <div class="card">
+    <div class="shead"><span class="no">{{NO}}</span><h2>소비자 결정구조(CEP·KBF·RTB)</h2><span class="badge b-derived">DERIVED</span><span class="hint">니즈·구매요인 잡 · {{DECISION_HINT}}</span></div>
+    <p class="sub">{{DECISION_SUB}} · 검색 언어 기반 해석</p>
+    <div class="grid6">
+      {{DECISION_CARDS_HTML}}
+    </div>
+    <p class="note">카드 내 항목은 검색합 볼륨 내림차순(볼륨 미측정 항목은 뒤로, 해석 보류 카드는 항상 맨 뒤). 회피 요인은 소비자 우려 신호이며 제품·서비스 성능 진술이 아닙니다.</p>
+  </div>
+  <!-- /SECTION:decision -->
+
+  <!-- SECTION:intent_mix -->
+  <div class="card">
+    <div class="shead"><span class="no">{{NO}}</span><h2>검색 의도 구성(Intent Mix)</h2><span class="badge b-measured">MEASURED</span><span class="hint">카테고리 리포트 · keyword_info intents(present/absent) + 쿼리 패턴</span></div>
+    <p class="sub">{{INTENT_SUB}}</p>
+    <div class="bar-rows">
+      <div class="bar-row head"><span></span><span>쿼리군 검색량 비중</span><span style="text-align:right;">비중</span><span style="text-align:right;">대표 쿼리</span></div>
+      {{INTENT_ROWS_HTML}}
+    </div>
+    <p class="note">{{INTENT_NOTE_HTML}} 의도 태그는 present/absent이며 비율이 아닙니다.</p>
+  </div>
+  <!-- /SECTION:intent_mix -->
+
+  <!-- SECTION:journey -->
+  <div class="card">
+    <div class="shead"><span class="no">{{NO}}</span><h2>검색 여정(CDJ)</h2><span class="badge b-measured">MEASURED</span><span class="hint">검색여정 잡 · path_finder({{JOURNEY_N}}경로)</span></div>
+    <p class="sub">{{JOURNEY_SUB}}</p>
+    <div class="flow">
+      {{JOURNEY_STAGES_HTML}}
+    </div>
+    <p class="note">마찰 지점 — {{JOURNEY_NOTE_HTML}} 경로는 집계 그래프이며 개인 이동이 아닙니다.</p>
+  </div>
+  <!-- /SECTION:journey -->
+
+  <!-- SECTION:backlog -->
+  <div class="card">
+    <div class="shead"><span class="no">{{NO}}</span><h2>기회 백로그(Opportunity Backlog){{BACKLOG_OWNER_SUFFIX}}</h2><span class="badge b-derived">DERIVED</span><span class="hint">{{BACKLOG_HINT}} 통합 · 의사결정 지원 참고용</span></div>
+    <p class="sub">임팩트 스케일(근거 쿼리군 연환산 검색량): <span class="sc sc-l">L</span>10만+/년 · <span class="sc sc-m">M</span>1만~10만 · <span class="sc sc-s">S</span>1만 미만</p>
+    <table>
+      <thead><tr><th>기회</th><th>근거 (측정)</th><th>제안 액션</th></tr></thead>
+      <tbody>
+        {{BACKLOG_ROWS_HTML}}
+      </tbody>
+    </table>
+  </div>
+  <!-- /SECTION:backlog -->
+
+  <!-- ═══ 부록 (항상 — 산출물마다 호출 순서 · 호출 로그 · 비용 보고서) ═══ -->
+  {{PROVENANCE_HTML}}
+
+  <!-- ═══ 푸터 (항상 — 방법·크레딧 + 가드레일) ═══ -->
+  <div class="foot">
+    <b>방법·한계</b> — {{METHOD_HTML}} 크레딧 실측: 이번 분석 소진 <b>{{CREDITS_TOTAL}}</b> ({{CREDITS_BREAKDOWN}}) · 월간 누적 {{USED_CREDITS}} (당월 누적 사용량 · 잔여 아님).<br><br>
+    <b>가드레일</b> — {{GUARDRAILS_HTML}}<br><br>
+    <b>데이터 사양·공백</b> — {{GAPS_HTML}}
+  </div>
+</div>
+
+<!-- SECTION:trend_script -->
+<div class="tip" id="tip"></div>
+<script>
+(function(){
+  var months=/*MONTHS_JSON*/[]/*END*/;
+  var vals=/*VALS_JSON*/[]/*END*/;
+  var unit=/*UNIT_JSON*/""/*END*/;
+  var svg=document.getElementById('trend');if(!svg||!months.length)return;
+  var tip=document.getElementById('tip'),xh=document.getElementById('xh'),hv=document.getElementById('hover');
+  var n=months.length,x0=50,w=800;
+  hv.addEventListener('mousemove',function(e){
+    var r=svg.getBoundingClientRect();var sx=(e.clientX-r.left)*(880/r.width);
+    var i=Math.max(0,Math.min(n-1,Math.round((sx-x0)/(w/(n-1)))));
+    var px=x0+i*(w/(n-1));xh.setAttribute('x1',px);xh.setAttribute('x2',px);xh.style.opacity=1;
+    tip.textContent=months[i]+' · '+vals[i].toLocaleString()+unit;tip.style.opacity=1;
+    tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-28)+'px';});
+  hv.addEventListener('mouseleave',function(){tip.style.opacity=0;xh.style.opacity=0;});
+})();
+</script>
+<!-- /SECTION:trend_script -->

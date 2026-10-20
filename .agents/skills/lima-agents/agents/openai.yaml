@@ -1,0 +1,4 @@
+interface:
+  display_name: "ListeningMind Lima Agents"
+  short_description: "검색 행동 데이터 탐색·리포트·CEP 발굴 — Explorer·Report·CEP Finder 3모드 오케스트레이터"
+  brand_color: "#2a78d6"

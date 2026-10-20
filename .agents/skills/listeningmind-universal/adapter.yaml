@@ -1,0 +1,105 @@
+# CEP Finder 어댑터 — listeningmind-universal (산업 무관 표준)
+# 스키마 정본: lima-agents/references/adapter-schema.md (cep-finder-adapter/v1)
+# 범용 스킬은 온톨로지·함의 사전을 갖지 않는다 — A4·A7은 absent로 선언하고 엔진이 배너에 기록한다(조용한 대체 금지).
+# 경로는 이 파일 기준 상대 경로.
+
+schema: cep-finder-adapter/v1
+adapter_version: "2.0.2"
+vertical: universal
+spec_ref: "기술 정의서 v2.3"
+updated: "2026-08-22"
+owner: "Ascent AI 리스닝마인드 DaaS"
+markets: [kr, us, jp]
+
+slots:
+
+  # ── A1 시드 정책 ── 실행 훅: scripts/seed_check.py (seed-check/v1)
+  A1_seed_policy:
+    status: ready
+    authority: references/seed-verification.md
+    hook:
+      cmd: scripts/seed_check.py
+      contract: seed-check/v1
+    thresholds:
+      noise_rate_max: 0.20
+      fit_rate_min: 0.60
+      brand_hits_min: 10
+    banned_seeds:
+      common: ["이사", "신혼", "출산", "소음", "가격", "무료", "프리미엄", "유기농", "그램", "드럼", "미니", "김", "무", "배", "당근", "멜론"]
+      kr: ["tv", "티비", "세탁실", "사무실"]
+      us: ["tv", "moving", "apartment", "dryer", "free"]
+      jp: ["テレビ", "引っ越し"]
+    replacements:
+      "tv": ["tv 추천", "스마트tv", "best tv", "4k tv"]
+      "이사": ["이사 + 카테고리/행위 결합형 (예: 신혼 가전 리스트, 이사 준비 리스트)"]
+      "dryer": ["clothes dryer", "ventless dryer"]
+    pattern_rules:
+      - "생애 이벤트·공간·고민·속성 단독 시드는 금지 — 반드시 카테고리·행위와 결합한다"
+      - "적합률은 --anchor 어휘 기준으로 잰다 (시드 자기 어휘 기준은 자기충족 측정)"
+      - "노이즈율은 개수 기준 프로브 후 총량 산출 시 볼륨 기준으로 재확인한다"
+    notation_pairs_required: true
+    seed_roles:
+      category_seed: "코퍼스 편입 · 노이즈·적합·히트 게이트 전부 — 기본값"
+      situation_anchor: "코퍼스 비편입 · 여정 전용 · 노이즈율만 게이트 · 카테고리 도달률은 측정값"
+      product_anchor: "코퍼스 비편입 · 전이형 여정 전용 · 적합률 면제 · 연관어 수는 특성값 · 상황형은 품목 run 상속"
+
+  # ── A2 노이즈 어휘 ── 정본: dictionary/E0_사전.csv Noise 클래스 (카테고리마다 append)
+  A2_noise_lexicon:
+    status: ready
+    authority: references/seed-verification.md
+    dictionary:
+      file: dictionary/E0_사전.csv
+      format: e0-csv/v1
+    patterns:
+      common: ["영어로", "일본어로", "한자", "유래", "나무위키", "위키", "wiki", "채용", "주가", "로그인",
+               "게임", "드라마", "웹툰", "가사", "노래", "영화", "아이돌", "밈", "짤"]
+      kr: ["편성표", "다시보기", "실시간", "방송", "뉴스", "예능", "중계", "아프리카", "누누", "뮤직", "라디오", "경마", "바둑", "먹방"]
+      us: ["youtube", "streaming", "watch", "episode", "series", "subscription", "prime video", "twitch", "tiktok", "lyrics", "movie", "stock price", "careers", "login"]
+      jp: ["動画", "配信", "見逃し", "歌詞", "株価", "採用", "ログイン"]
+    volume_check_required: true
+    note: "범용 초기값 — 카테고리별 오염 어휘는 분석 시 E0 사전에 append (append-only). 2026-08-22 실측: 디시·더쿠는 노이즈가 아니라 Reviewer('○○ 추천 디시'는 카테고리 의도) → 패턴에서 제외"
+
+  # ── A3 엔티티 정본 ── 범용은 빈 템플릿만 제공 → partial. 분석 시 dictionary/brand-map.md를 채운다.
+  A3_entity_authority:
+    status: partial
+    authority: references/entity-dictionary.md
+    format: brand-map-md/v1
+    template: dictionary/brand-map.md
+    rules:
+      corporate_standalone_exclude: true
+      subbrand_standalone_keep: true
+      matched_aliases_disclosure: true
+    homonyms:
+      - {term: "그램", collision: "무게 단위 gram", keep_only: []}
+      - {term: "미니", collision: "자동차 MINI·일반 형용", keep_only: []}
+      - {term: "당근", collision: "당근마켓", keep_only: []}
+    generic_rule: alias-nonmatch
+    note: "브랜드 사전은 분석 대상 카테고리마다 작성 — 사전 공백은 SoV 분모를 먼저 망친다"
+
+  # ── A4 온톨로지 ── 범용은 정본 그래프 없음
+  A4_ontology_binding:
+    status: absent
+    note: "온톨로지는 버티컬 오버레이의 몫 — 엔진은 delta만 산출하고 자산 누적 없음을 배너에 기록"
+
+  # ── A5 가드레일 ── 산출물 삽입 확인 대상 (render_report.py G4 경고)
+  A5_guardrails:
+    status: ready
+    authority: references/guardrails.md
+    mandatory:
+      - {id: search-not-action, text: "검색은 관심 신호이며 실제 판매·계약·방문이 아님"}
+      - {id: sov-approx, text: "브랜드 점유는 검색량 기준 근사"}
+      - {id: no-causal, text: "이벤트·시즌과 검색 변화의 인과는 단정하지 않고 동향으로 서술"}
+      - {id: aggregate-only, text: "집계 검색 데이터만 사용 — 개인 추적·민감 속성 추정 없음"}
+      - {id: label-policy, text: "모든 수치는 실측/파생/가정/없음 라벨로 구분"}
+
+  # ── A6 렌더 ──
+  A6_render:
+    status: ready
+    template: references/report-template.html
+    renderer: script-only          # scripts/render_report.py <data.json> — 셸/sed 직접 주입 금지
+    gate_overrides: {}
+
+  # ── A7 함의 사전 ── 범용은 없음
+  A7_modifier_implication:
+    status: absent
+    note: "수식어→제약 함의는 버티컬 실측·승인 후에만 — 범용에서는 L4(제약) gap 처리"

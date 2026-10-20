@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "B-1 · 연령별·성별 세그먼트 인텐트 분석",
+  "type": "object",
+  "required": ["meta", "segments", "top_keywords_by_segment", "kbf_by_segment", "cross_matrix", "insights"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["category", "gl", "total_nodes", "total_keywords_with_demo", "total_credits", "generated_at"],
+      "properties": {
+        "category": {"type": "string"},
+        "gl": {"type": "string"},
+        "total_nodes": {"type": "integer"},
+        "total_keywords_with_demo": {"type": "integer"},
+        "total_credits": {"type": "integer"},
+        "generated_at": {"type": "string"}
+      }
+    },
+    "segments": {
+      "type": "array",
+      "description": "세그먼트 · 연령대·성별 · 볼륨·키워드 수·비중",
+      "items": {
+        "type": "object",
+        "required": ["key", "label", "kind", "keyword_count", "total_volume"],
+        "properties": {
+          "key": {"type": "string", "description": "female · male · a13 · a20 · a25 · a30 · a40 · a50"},
+          "label": {"type": "string"},
+          "kind": {"enum": ["gender", "age"]},
+          "keyword_count": {"type": "integer"},
+          "total_volume": {"type": "number"},
+          "share_pct": {"type": "number", "description": "전체 대비 %"}
+        }
+      }
+    },
+    "top_keywords_by_segment": {
+      "type": "object",
+      "description": "세그먼트별 TOP 10 키워드",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["keyword", "volume"],
+          "properties": {
+            "keyword": {"type": "string"},
+            "volume": {"type": "number"},
+            "trend": {"type": "number"}
+          }
+        }
+      }
+    },
+    "kbf_by_segment": {
+      "type": "object",
+      "description": "세그먼트별 KBF 편익 요인 · CEP HOW_FEEL 서브그룹 볼륨 합계",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["label", "volume"],
+          "properties": {
+            "label": {"type": "string", "description": "예 · 맛·품질·평가"},
+            "volume": {"type": "number"},
+            "keyword_count": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "cross_matrix": {
+      "type": "object",
+      "description": "성별 × 연령대 매트릭스 · 볼륨·대표 키워드",
+      "properties": {
+        "gender_x_age": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["gender", "age", "volume", "keyword_count"],
+            "properties": {
+              "gender": {"enum": ["female", "male"]},
+              "age": {"type": "string"},
+              "volume": {"type": "number"},
+              "keyword_count": {"type": "integer"},
+              "top_keywords": {
+                "type": "array",
+                "description": "이 셀에 속한 키워드 전체 · 볼륨 순",
+                "items": {
+                  "type": "object",
+                  "required": ["keyword", "volume"],
+                  "properties": {
+                    "keyword": {"type": "string"},
+                    "volume": {"type": "number"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "insights": {
+      "type": "array",
+      "description": "조사원 자동 인사이트 3~5개",
+      "items": {
+        "type": "object",
+        "required": ["kind", "title", "body"],
+        "properties": {
+          "kind": {"enum": ["segment_dominance", "kbf_gap", "opportunity", "risk", "rising"]},
+          "title": {"type": "string"},
+          "body": {"type": "string"}
+        }
+      }
+    }
+  }
+}
