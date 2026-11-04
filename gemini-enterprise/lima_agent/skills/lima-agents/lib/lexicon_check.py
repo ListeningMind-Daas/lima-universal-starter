@@ -84,7 +84,11 @@ _COMPILED = [(re.compile(_ab(p)), plain, kind, why) for p, plain, kind, why in L
 
 _QUOTED = re.compile(r"‘[^’]{0,80}’|“[^”]{0,120}”|'[^'\n]{0,80}'|\"[^\"\n]{0,80}\"")
 _SKIP_SPANS = re.compile(r"<(script|style|code)\b.*?</\1>", re.S | re.I)
-_URL_PATH = re.compile(r"https?://\S+|\b[\w./-]+\.(?:json|html|md|py|csv|jsonl)\b|\bR-0\d\d\b|\b[A-Z]{2,}-[\w가-힣-]+\b")
+# 파일 경로·URL — 와일드카드(raw/serp_*.json)와 조사가 붙은 경로(run_manifest.json으로)까지. 화면 문구가 아니므로 검사·치환하지 않는다
+#   (2026-10-14 결정 리포트에서 'raw/serp_*.json'이 'raw/검색결과 화면_*.json'으로 바뀐 채 배포됐다)
+PATH = (r"https?://\S+|(?<![A-Za-z0-9_.*/-])(?:[A-Za-z0-9_.*-]+/)*[A-Za-z0-9_.*-]*[A-Za-z0-9_*]\.(?:jsonl|json|html|md|py|csv|toml|txt|ya?ml)(?![A-Za-z0-9_])"
+        r"|(?<![A-Za-z0-9_./-])(?:raw|core|out|logs|canon)/(?![A-Za-z0-9_*])")
+_URL_PATH = re.compile(PATH + r"|\bR-0\d\d\b|\b[A-Z]{2,}-[\w가-힣-]+\b")
 SKIP_KEYS = {"id", "kind", "grade", "match", "raw_file", "raw", "url", "href", "collected_at", "at", "file", "hub", "cell", "run",
              "seed", "q", "keyword", "queries", "topQueries", "chips", "examples", "ex", "bridges", "matched", "rows", "p",
              "slug", "cfg", "source_run", "hypothesis", "anchor", "type", "tier", "chip", "members", "series", "month",
@@ -110,6 +114,42 @@ def visible(text: str) -> str:
     return _QUOTED.sub(" ", t)
 
 
+# 같은 낱말이 띄어쓰기만 두고 연달아 나오는 것 — 용어 치환이 이웃 낱말과 겹쳐 생긴다
+#   ('롱테일 키워드' → '세부 검색어 검색어' · '상황 결합쿼리' → '상황 상황+품목 검색어' · '정본 데이터' → '기준 데이터 데이터', 2026-10-14)
+#   한 텍스트 노드 안에서만 본다 — 칩·표 칸으로 나뉜 소비자 검색어('태블릿' '태블릿 필기')는 태그를 지우면 붙어 보여서 오탐이 난다
+_JOSA = r"(?:으로|에서|에게|은|는|이|가|을|를|과|와|도|의|에|로|만)"
+REPEAT = re.compile(r"(?<![가-힣A-Za-z0-9])([가-힣]{2,}|[A-Za-z]{3,})(\s+)\1(?=" + _JOSA + r"?(?![가-힣A-Za-z0-9]))")
+REPEAT_PLAIN = "겹친 낱말 하나를 지운다 — 용어 치환이 이웃 낱말과 겹친 흔적"
+
+
+def _text_nodes(text: str):
+    t = _SKIP_SPANS.sub("\x00", text)
+    for seg in re.split(r"<[^>]+>|\x00", t):
+        seg = _QUOTED.sub("\x00", _URL_PATH.sub("\x00", _html.unescape(seg)))
+        if re.search(r"[가-힣A-Za-z]", seg):
+            yield seg
+
+
+def repeat_hits(text: str, where: str, allow: dict | None = None) -> list[Hit]:
+    """텍스트 노드 안의 낱말 반복('세부 검색어 검색어'). allow의 키에 반복 구절 그대로('미니 미니')를 사유와 함께 두면 건너뛴다."""
+    allow = {k: v for k, v in (allow or {}).items() if v}
+    out = []
+    for seg in _text_nodes(text):
+        for m in REPEAT.finditer(seg):
+            term = m.group(0)
+            if term in allow:
+                continue
+            out.append(Hit(where, term, REPEAT_PLAIN, "repeat", seg[max(0, m.start() - 30):m.end() + 30].replace("\n", " ").strip()))
+    return out
+
+
+def collapse_repeats(before: str, after: str) -> str:
+    """치환 결과(after)에서 새로 생긴 낱말 반복만 하나로 줄인다 — 원문(before)에 이미 있던 반복(소비자 검색어 등)은 그대로 둔다."""
+    def fix(m):
+        return m.group(0) if m.group(0) in before else m.group(1)
+    return REPEAT.sub(fix, after)
+
+
 def scan_text(text: str, where: str, allow: dict | None = None) -> list[Hit]:
     allow = {k: v for k, v in (allow or {}).items() if v}          # 사유 없는 예외는 무시
     t, out = visible(text), []
@@ -119,7 +159,7 @@ def scan_text(text: str, where: str, allow: dict | None = None) -> list[Hit]:
             if term in allow or any(re.fullmatch(a, term) for a in allow if a.startswith("^")):
                 continue
             out.append(Hit(where, term, plain, kind, t[max(0, m.start() - 30):m.end() + 30].replace("\n", " ").strip()))
-    return out
+    return out + repeat_hits(text, where, allow)
 
 
 def scan_json(obj, where: str, allow: dict | None = None, path: str = "") -> list[Hit]:
@@ -160,12 +200,17 @@ def summarize(hits: list[Hit]) -> dict:
     return dict(sorted(by.items(), key=lambda kv: -kv[1]))
 
 
+BLOCKING = ("jargon", "repeat")     # exaggerate는 경고만
+
+
 def gate(label: str, hits: list[Hit], max_show: int = 12) -> str | None:
     """차단 메시지(jargon 있음) 또는 None. exaggerate는 호출자가 경고로 출력한다."""
-    jar = [h for h in hits if h.kind == "jargon"]
+    jar = [h for h in hits if h.kind in BLOCKING]
     if not jar:
         return None
-    lines = [f"[어휘 검사] {label} — 업무 사용자가 읽기 어려운 분석 작업 용어 {len(jar)}건이 있어 렌더를 멈춥니다"]
+    n_rep = sum(1 for h in jar if h.kind == "repeat")
+    lines = [f"[어휘 검사] {label} — 업무 사용자가 읽기 어려운 분석 작업 용어 {len(jar) - n_rep}건"
+             + (f" · 겹친 낱말 {n_rep}건" if n_rep else "") + "이 있어 렌더를 멈춥니다"]
     for h in jar[:max_show]:
         lines.append(f"  × '{h.term}' → {h.plain} · …{h.context}…")
     if len(jar) > max_show:
@@ -247,9 +292,12 @@ def _fix_particle(rep: str, rest: str) -> str:
     return rest
 
 
+_PROTECT = re.compile(r"(‘[^’]{0,80}’|“[^”]{0,120}”|<code\b.*?</code>|" + PATH + ")", re.S)
+
+
 def _sub_outside_quotes(t: str, fn) -> str:
-    parts = re.split(r"(‘[^’]{0,80}’|“[^”]{0,120}”|<code\b.*?</code>|https?://\S+|\b[\w./-]+\.(?:json|html|md|py|csv|jsonl)\b)", t, flags=re.S)
-    return "".join(p if i % 2 else fn(p) for i, p in enumerate(parts))
+    out = "".join(p if i % 2 else fn(p) for i, p in enumerate(_PROTECT.split(t)))     # 홀수 칸 = 따옴표·code·경로
+    return collapse_repeats(t, out)
 
 
 def translate(text: str) -> str:
@@ -296,7 +344,7 @@ def translate_html(html: str) -> str:
             return m.group(0)
         return m.group(1) + json.dumps(translate_json(obj), ensure_ascii=False).replace("</", "<\\/") + m.group(3)
     html = re.sub(r'(<script[^>]*type="application/json"[^>]*>)(.*?)(</script>)', data_block, html, flags=re.S)
-    parts = re.split(r"(<script.*?</script>|<style.*?</style>|<[^>]+>)", html, flags=re.S)
+    parts = re.split(r"(<script.*?</script>|<style.*?</style>|<code\b[^>]*>.*?</code>|<[^>]+>)", html, flags=re.S)   # <code> 안은 원문 그대로
     return "".join(p if i % 2 else translate(p) for i, p in enumerate(parts))
 
 

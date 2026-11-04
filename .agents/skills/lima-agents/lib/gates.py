@@ -42,6 +42,7 @@ WORKSPACE = SKILLS_ROOT.parents[1]
 
 # (id, 이름, 단계, 파이프라인 단계)
 GATES = [
+    ("design", "분석 설계", "render", "3~6"),
     ("budget", "예산 승인", "render", "6"),
     ("canon", "정본 해석", "render", "6.5"),
     ("data", "수집·엔진 게이트", "render", "7~8"),
@@ -57,6 +58,18 @@ PASSING = {"pass", "waived", "na", "skipped"}
 DICT_GATES = ("canon", "readiness")                            # 사전 공백 결정이 적용되는 게이트
 DICT_QUESTION = "이 품목의 사전(브랜드·품목 어휘)이 비어 있거나 부족합니다. 사전을 채울까요, 건너뛰고 진행할까요?"
 MANUAL_OK = {"pass", "waived"}
+# 분석 설계 게이트 — 이 패키지에는 설계 도구가 없어 항상 n/a
+DESIGN_QUESTION = "이 분석에는 분석 설계서가 없습니다. 설계부터 할까요, 설계 없이 진행할까요?"
+LEGACY_DEFAULT = {"design": {"status": "na", "source": "auto", "evidence": "설계 게이트 도입 이전 기록"}}
+
+
+def _normalize(doc: dict | None) -> dict | None:
+    """게이트 항목이 늘어도 예전 gates.json 을 읽을 수 있게 — 없는 항목을 채운다(설계 게이트는 도입 이전 = 해당 없음)."""
+    if doc and isinstance(doc.get("gates"), dict):
+        for g in GATE_IDS:
+            if g not in doc["gates"]:
+                doc["gates"][g] = dict(LEGACY_DEFAULT.get(g, {"status": "pending", "source": "auto", "evidence": ""}))
+    return doc
 
 
 def _now() -> str:
@@ -72,7 +85,7 @@ def load(run: Path, override: Path | None = None) -> dict | None:
     if not p.exists():
         return None
     with p.open(encoding="utf8") as fh:
-        return json.load(fh)
+        return _normalize(json.load(fh))
 
 
 def save(run: Path, doc: dict, override: Path | None = None) -> Path:
@@ -95,11 +108,12 @@ def init(run: Path, vertical: str | None, category: str | None, market: str = "k
             doc["meta"][k] = v
     for g in GATE_IDS:
         doc["gates"].setdefault(g, {"status": "pending", "source": "auto", "evidence": ""})
+    auto_design(doc, run)   # 이 패키지에서 쓰지 않는 항목 — 처음부터 n/a
     return doc
 
 
 def _set_auto(doc: dict, gate: str, status: str, evidence: str, **extra):
-    cur = doc["gates"][gate]
+    cur = doc["gates"].setdefault(gate, {})
     if cur.get("source") == "manual" and cur.get("status") in ("filling", "skipped") and status == "pass":
         cur = {}                               # 채우기·건너뛰기 뒤 사전이 실제로 채워졌으면 통과로 갱신
     elif cur.get("source") == "manual":        # 사람 기록은 자동 판정이 덮지 않는다
@@ -130,6 +144,36 @@ def auto_budget(doc: dict, mf: dict | None):
         _set_auto(doc, "budget", st, f"실행 전 상한 {cap:,} · 소진 {spent:,}크레딧")
     else:
         _set_auto(doc, "budget", "pending", f"소진 {spent:,}크레딧 · 상한(--budget) 없이 실행 — 사전 승인 기록 필요(attest)")
+
+
+def auto_design_budget(doc: dict, run: Path):
+    """설계서로 실행한 분석(<run>/design/) — 단계마다 승인 상한 안에서 썼는지 execution.json 으로 판정.
+    엔진 매니페스트(out/run_manifest.json)가 있으면 그쪽이 우선이라 여기는 매니페스트가 없을 때만 부른다."""
+    ex = Path(run) / "design/execution.json"
+    if not ex.is_file():
+        return
+    rows = json.loads(ex.read_text(encoding="utf8"))
+    live = [r for r in rows if not r.get("replay")]
+    spent = sum(r.get("spent_live") or 0 for r in live)
+    over = [r for r in live if r.get("over_cap")]
+    if not live:
+        _set_auto(doc, "budget", "pass", "설계서 실행 — 재생만(신규 지출 0크레딧)")
+    elif over:
+        _set_auto(doc, "budget", "fail", f"설계서 승인 상한 초과 — {[(r['stage'], r['spent_live'], r['cap']) for r in over]}")
+    else:
+        _set_auto(doc, "budget", "pass", f"설계서 단계별 승인 상한 안 소진 {spent:,}크레딧 · 견적 대비 " +
+                  ", ".join(f"{r['stage']} {r['spent_live']:,}/{r['estimate']:,}" for r in live))
+
+
+def auto_design(doc: dict, run: Path):
+    """분석 설계 도구가 없는 설치는 n/a."""
+    _set_auto(doc, "design", "na", "이 패키지에서 쓰지 않는 항목")
+
+
+def design_precheck(design: Path | None, skip: bool = False, today: str | None = None) -> dict:
+    """일괄 실행기용 — 분석 설계 도구가 없는 설치는 n/a."""
+    return {"status": "na", "evidence": "이 패키지에서 쓰지 않는 항목"}
+
 
 
 def auto_data(doc: dict, mf: dict | None):
@@ -214,7 +258,10 @@ def refresh(run: Path, override: Path | None = None, run_tests: bool = True, can
     if mf:
         doc["meta"].setdefault("vertical", (mf.get("adapter") or {}).get("vertical"))
         doc["meta"].setdefault("run_id", mf.get("run_id"))
+    auto_design(doc, run)
     auto_budget(doc, mf)
+    if not mf:
+        auto_design_budget(doc, run)
     auto_data(doc, mf)
     auto_readiness(doc, mf)
     if canon:
@@ -261,14 +308,20 @@ def decide(run: Path, choice: str, by: str, note: str = "", gates: list[str] | N
     doc = load(run, override)
     if doc is None:
         raise ValueError("gates.json 없음 — 먼저 run_gate.py init")
-    targets = gates or [g for g in DICT_GATES if doc["gates"][g]["status"] in ("ask", "filling", "skipped")]
+    targets = gates or [g for g in DICT_GATES + ("design",) if doc["gates"][g]["status"] in ("ask", "filling", "skipped")]
     if not targets:
-        raise ValueError("결정할 게이트가 없다 — 사전 공백('결정 필요') 상태가 아니다")
+        raise ValueError("결정할 게이트가 없다 — '결정 필요' 상태가 아니다")
     for g in targets:
-        if g not in DICT_GATES:
-            raise ValueError(f"사전 결정은 {', '.join(DICT_GATES)} 게이트에만 적용된다")
+        if g not in DICT_GATES + ("design",):
+            raise ValueError(f"결정은 {', '.join(DICT_GATES + ('design',))} 게이트에만 적용된다")
         prev = doc["gates"][g]
         auto = {k: prev.get(k) for k in ("status", "evidence") if prev.get("source") == "auto"} or prev.get("auto_latest")
+        if g == "design":
+            ev = ("사용자 선택: 설계 없이 진행 — 하위 질문·견적·분기의 근거 없이 만든 산출물" if choice == "skip"
+                  else "사용자 선택: 설계부터") + (f" · {note}" if note else "")
+            doc["gates"][g] = {"status": "skipped" if choice == "skip" else "filling", "source": "manual", "by": by,
+                               "evidence": ev, "at": _now(), "auto_latest": auto}
+            continue
         if choice == "skip":
             ev = "사용자 선택: 사전을 채우지 않고 진행 — 브랜드 귀속·정본 판정은 잠정" + (f" · {note}" if note else "")
             doc["gates"][g] = {"status": "skipped", "source": "manual", "by": by, "evidence": ev, "at": _now(), "auto_latest": auto}
@@ -312,6 +365,7 @@ def record_rules(run: Path, by: str, new: list[str] | None = None, reconfirmed: 
 
 # ── 판정·배너 ──────────────────────────────────────────────────────────────
 def evaluate(doc: dict | None, stage: str = "render") -> dict:
+    _normalize(doc)
     if doc is None:
         return {"recorded": False, "complete": False, "blocking": [], "ask": [], "waived": [], "skipped": [], "pending_publish": []}
     need = [g for g in GATE_IDS if stage == "publish" or STAGE_OF[g] == "render"]
@@ -342,7 +396,11 @@ def banner_html(ev: dict, allow_ungated: bool = False) -> str:
         items = "".join(f"<li>{e(NAMES[g])} 면제 — {e(r.get('evidence', ''))} ({e(r.get('by', ''))})</li>" for g, r in ev["waived"])
         parts.append(f"<b>면제된 품질 점검</b> — 사유와 함께 공개합니다.<ul style=\"margin:6px 0 0 18px\">{items}</ul>")
     if ev.get("skipped"):
-        parts.append("<span style=\"font-size:13px\">브랜드 사전 생략(사용자 선택) — 브랜드 귀속·판정은 잠정</span>")
+        sk = {g for g, _ in ev["skipped"]}
+        if sk & set(DICT_GATES):
+            parts.append("<span style=\"font-size:13px\">브랜드 사전 생략(사용자 선택) — 브랜드 귀속·판정은 잠정</span>")
+        if "design" in sk:
+            parts.append("<span style=\"font-size:13px\">분석 설계 생략(사용자 선택) — 하위 질문·견적·분기 근거 없이 만든 산출물</span>")
     if not ev["blocking"] and ev["pending_publish"]:
         parts.append("<span style=\"font-size:13px\">발행 전 남은 확인: "
                      + e(" · ".join(NAMES[g] for g in ev["pending_publish"])) + "</span>")

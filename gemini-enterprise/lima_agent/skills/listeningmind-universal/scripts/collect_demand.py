@@ -993,12 +993,13 @@ def cmd_content(a) -> int:
                 sites[o["site_name"]] = sites.get(o["site_name"], 0) + 1
             qs = [q["question"] for q in sp.questions(d)]
             paa += [q for q in qs if q not in paa]
-            per.append({"keyword": r["keyword"], "aio": bool(sp.ai_overview_snippets(d)), "paa": len(qs),
-                        "top_sites": [o.get("site_name") for o in org[:5]], "collected_at": d.get("at")})
+            per.append({"keyword": r["keyword"], "aio": bool(sp.ai_overview_snippets(d)) if d.get("data") else None, "paa": len(qs),
+                        "top_sites": [o.get("site_name") for o in org[:5]], "collected_at": d.get("collected_at")})
         gg = sum((r["g"].get(x) or 0) for r, _ in got for x in last12)
         nv = sum((r["n"].get(x) or 0) for r, _ in got for x in last12)
         res["serp"] = {"keywords": len(got), "google_share_of_these_keywords": round(gg / (gg + nv), 4) if gg + nv else None,
-                       "aio_rate": round(sum(p["aio"] for p in per) / len(per), 4) if per else None,
+                       "aio_rate": round(sum(p["aio"] for p in per if p["aio"] is not None) / sum(p["aio"] is not None for p in per), 4) if any(p["aio"] is not None for p in per) else None,
+                       "keywords_without_snapshot": sum(p["aio"] is None for p in per),
                        "top10_site_counts": dict(sorted(sites.items(), key=lambda x: -x[1])[:15]),
                        "paa_questions": paa[:30], "per_keyword": per,
                        "caveat": "구글 검색결과 스냅샷(수집 시점) — 조회 검색어의 구글 비중이 낮으면 노출 지형을 단정하지 않는다 · 시계열 비교 불가"}
@@ -1006,7 +1007,8 @@ def cmd_content(a) -> int:
     print("목적별(시드 제외): " + " · ".join(f"{g['purpose']} {g['share_excl_seeds'] or 0:.0%}" for g in groups) + " → core/content.json")
     if res.get("serp"):
         s_ = res["serp"]
-        print(f"  serp {s_['keywords']}개 · 구글 비중 {s_['google_share_of_these_keywords']:.0%} · AI 개요 노출 {s_['aio_rate']:.0%} · "
+        pct = lambda v: "—" if v is None else f"{v:.0%}"   # 전부 빈 응답이면 None
+        print(f"  serp {s_['keywords']}개 · 구글 비중 {pct(s_['google_share_of_these_keywords'])} · AI 개요 노출 {pct(s_['aio_rate'])} · "
               f"상위 사이트 {list(s_['top10_site_counts'])[:5]}")
     return 0
 

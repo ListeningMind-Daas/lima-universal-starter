@@ -1,4 +1,4 @@
-# lima-universal 스타터 패키지 v1.4.0
+# lima-universal 스타터 패키지 v1.5.0
 
 ListeningMind DaaS 검색 행동 데이터 기반 **마켓 인텔리전스 에이전트 워크스페이스**입니다.
 산업 무관 표준 스킬(listeningmind-universal)과 오케스트레이터(lima-agents)로 구성되어
@@ -28,11 +28,12 @@ ListeningMind DaaS 검색 행동 데이터 기반 **마켓 인텔리전스 에�
 ```
 README.md · VERSION       합본 안내 · 판 번호
 CLAUDE.md                  운영 규칙 정본 (라우팅·판정·온보딩·가드레일)
-.claude/skills/            분석 스킬 2종
+.claude/skills/            분석 스킬 3종
   └ lima-agents/               오케스트레이터 — Explorer·Report·CEP Finder 3모드
       └ references/            DaaS 커넥터 명세 6종 (파라미터·응답 필드·크레딧 공식·실측 검증)
   └ listeningmind-universal/   표준 베이스 — 7 표준잡 · 시드 검증 · 준비도 게이트 · 리포트 렌더러
       └ references/vertical-overlay-guide.md   산업·사내 전용 오버레이 만들기 가이드
+  └ lm-chart/                  차트 엔진 — 데이터 파일을 표준 차트 26종 중 하나로 (단발 차트 요청에 쓴다 · 내장 리포트는 자체 렌더러로 그린다)
 90_Output/                 결과물 저장 폴더
 00_Context/ 10_Projects/  작업 폴더 골격 (온보딩·프로젝트) · 임시 폴더 99_Scratch/는 처음 쓸 때 생기며 git에서 제외됩니다
 AGENTS.md · .agents/ · .codex/ · README-CODEX.md   Codex 판 (같은 스킬)
@@ -101,6 +102,20 @@ python3 ../lima-agents/scripts/check_lexicon.py file ../../../99_Scratch/sample.
 ```
 
 ## 변경 이력
+
+- **v1.5 (2026-11-04)** — 운영 API v1.0.15 · serp 저장 스냅샷 규칙 · AI 요약 파서 수정 · 차트 엔진 동봉
+  - **API 명세 기준을 운영 OpenAPI v1.0.15로** — `POST /keyword_info/monthly_volume`(키워드 1개의 월별 검색량) 정식 등록 · 공통 선택 파라미터 `skill_desc` 문서화.
+    고정 사본(`lima-agents/api/openapi-prod-pinned.json`)과 견적표도 함께 갱신
+  - **serp 는 저장된 스냅샷으로 다룬다** — 근거 시점은 요청 시각이 아니라 응답의 `collected_at`. CEP Finder 근거 기록·리포트 문구도 같게 고쳤다.
+    `data: []`(0크레딧)는 'AI 요약 미노출'이 아니라 데이터 공백이다. `serp-api.md`에 스냅샷 나이 실측 추가
+  - **AI 요약 본문을 빠뜨리던 파서 수정** — `serp.ai_overview_snippets()`가 목록 1단계만 읽어 문단과 중첩 목록을 놓쳤다. 인용 출처용 `ai_overview_references()` 추가
+  - serp `features` 제약(블록 유형 최대 1개) 명시 · `serp.py` 설명에 남아 있던 옛 단가(10)를 30으로 정정. 2026-08-19 응답 예시의 10은 당시 기록이라 그대로 둔다
+  - **AI 요약 노출 비율의 분모에서 빈 응답을 뺀다** — `run_cep_finder.py`·`collect_demand.py`. `collect_demand.py`의 `collected_at`이 요청 시각으로 기록되던 것을 응답 값으로 정정. Gemini 판 serp 도구도 `collected_at`을 돌려준다
+  - `keyword-info-api.md` 정정 — `intents`는 비율이 아니라 0/1 플래그 · 인구통계 키 이름 · `volume_trend` 계산식 관측
+  - **차트 엔진 `lm-chart` 동봉** — 데이터 파일을 표준 차트 26종 중 하나로
+  - 어휘 검사가 파일 경로를 건드리지 않고 겹친 낱말을 잡도록 개선 · 지난 명세 보관(`api/openapi-prod-history/`)
+  - **CEP Finder 리포트 렌더러** — 허브 카드·브랜드 매트릭스·4분면·여정 블록이 같은 여정 지표 값을 쓴다 ·
+    시즌 지수 차트 y축 0 기준 · 4분면 버블을 면적 비례로 그리고 크기 범례를 붙임 · AI 요약 근거 줄에 빈 응답 수 표시 · 화면 용어 바꾸기가 파일 경로를 건드리지 않게 수정
 
 - **v1.4 (2026-10-13)** — Codex·Gemini Enterprise 판 · API 키 설정 스크립트 · trend_finder 커넥터 · 수요·트렌드 잡 수집 파이프라인
   (v1.3은 따로 발행하지 않고 이 판에 포함했다)
@@ -174,4 +189,4 @@ python3 ../lima-agents/scripts/check_lexicon.py file ../../../99_Scratch/sample.
   ③ 워크스페이스 골격(00_Context 온보딩 · 90_Output · 99_Scratch) + 운영 규칙 정본(CLAUDE.md)
 
 ---
-v1.4.0 · Ascent AI · 문의: ListeningMind DaaS 담당자
+v1.5.0 · Ascent AI · 문의: ListeningMind DaaS 담당자

@@ -17,7 +17,7 @@ description: |
   - 데이터 조회 → 조사원 톤 · 능동 인사이트 → HTML Artifact
 allowed-tools: Bash, Read, Write, WebSearch
 metadata:
-  build: v1.4.0
+  build: v1.5.0
 ---
 
 # lima-agents · 통합 리서치 스킬

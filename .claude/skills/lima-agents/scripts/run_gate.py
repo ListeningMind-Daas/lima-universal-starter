@@ -39,6 +39,8 @@ def show(doc: dict | None, stage: str) -> int:
             "ask": "결정", "filling": "작성중", "skipped": "생략"}
     for gid, name, st_stage, step in G.GATES:
         r = doc["gates"][gid]
+        if gid == "design" and r["status"] == "na":   # 이 패키지에서 쓰지 않는 항목
+            continue
         who = f" ({r.get('by')})" if r.get("by") else ""
         print(f"  [{mark.get(r['status'], r['status'])}] {step:>4} {name:<10} {st_stage:<7} {r.get('evidence', '')}{who}")
     print(f"\n{stage} 단계: {'완료' if ev['complete'] else '미완 — ' + ', '.join(G.NAMES[g] for g, _ in ev['blocking'])}")
@@ -57,7 +59,7 @@ def main(argv=None):
     p = sub.add_parser("init", parents=[common]); p.add_argument("--vertical"); p.add_argument("--category"); p.add_argument("--market", default="kr")
     p = sub.add_parser("check", parents=[common]); p.add_argument("--no-tests", action="store_true"); p.add_argument("--no-canon", action="store_true")
     for name in ("attest", "waive"):
-        p = sub.add_parser(name, parents=[common]); p.add_argument("--gate", required=True, choices=G.GATE_IDS)
+        p = sub.add_parser(name, parents=[common]); p.add_argument("--gate", required=True, choices=[g for g in G.GATE_IDS if g != "design"])
         p.add_argument("--by", required=True); p.add_argument("--note", required=True)
     p = sub.add_parser("decide", parents=[common]); p.add_argument("--choice", required=True, choices=("fill", "skip"))
     p.add_argument("--by", required=True); p.add_argument("--note", default=""); p.add_argument("--gate", action="append", choices=G.DICT_GATES)

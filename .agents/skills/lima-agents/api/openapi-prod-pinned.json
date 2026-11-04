@@ -2,9 +2,9 @@
  "schema": "lm-openapi-pin/v2",
  "info": {
   "title": "listeningmind-data-api",
-  "version": "v1.0.13"
+  "version": "v1.0.15"
  },
- "pinned_at": "2026-10-13",
+ "pinned_at": "2026-10-30",
  "source": "https://listeningmind-data-api.ascentlab.io/openapi.json",
  "paths": {
   "/cluster_finder": {
@@ -19,6 +19,7 @@
     "limit",
     "orientation",
     "response_format",
+    "skill_desc",
     "time_point",
     "user_query"
    ],
@@ -77,6 +78,7 @@
     "limit",
     "orientation",
     "response_format",
+    "skill_desc",
     "time_point"
    ],
    "required": [
@@ -128,6 +130,7 @@
     "limit",
     "order",
     "response_format",
+    "skill_desc",
     "sort",
     "user_query",
     "volume_threshold"
@@ -179,6 +182,7 @@
     "is_skills",
     "keywords",
     "response_format",
+    "skill_desc",
     "user_query"
    ],
    "required": [
@@ -223,6 +227,44 @@
     ]
    }
   },
+  "/keyword_info/monthly_volume": {
+   "method": "POST",
+   "summary": "ListeningMind 키워드 월별 검색량 조회(단건)",
+   "params": [
+    "gl",
+    "is_skills",
+    "keyword",
+    "response_format",
+    "skill_desc",
+    "user_query"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 1,
+     "output_cost": 0,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 1,
+    "output_cost": 0
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
   "/path_finder": {
    "method": "POST",
    "summary": "키워드 검색 경로 분석",
@@ -232,6 +274,7 @@
     "keyword",
     "limit",
     "response_format",
+    "skill_desc",
     "time_point",
     "user_query"
    ],
@@ -278,6 +321,7 @@
     "keyword",
     "limit",
     "response_format",
+    "skill_desc",
     "time_point"
    ],
    "required": [
@@ -325,6 +369,7 @@
     "keyword",
     "num",
     "response_format",
+    "skill_desc",
     "user_query"
    ],
    "required": [
@@ -370,6 +415,7 @@
     "order",
     "period_days",
     "response_format",
+    "skill_desc",
     "sort",
     "user_query"
    ],

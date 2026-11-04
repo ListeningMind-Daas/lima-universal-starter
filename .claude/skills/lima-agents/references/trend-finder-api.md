@@ -3,7 +3,7 @@
 **엔드포인트**: `POST /trend_finder/issue_list`
 **목적**: 시드 키워드 주변에서 최근 급부상한 이슈 항목(요약·핵심 구문·출처 링크·토픽·이슈 점수) 조회
 **래퍼**: `api/trend_finder.py` · `fetch()` · `widen()` + 파싱 헬퍼 5종
-**검증**: 운영 OpenAPI v1.0.13 파라미터 대조(2026-10-13) + 실측 응답 1건 (gl=kr · 로봇청소기 · period_days=14 · limit=3 · 2026-09-23)
+**검증**: 운영 OpenAPI v1.0.15 파라미터 대조(2026-11-04) + 실측 응답 1건 (gl=kr · 로봇청소기 · period_days=14 · limit=3 · 2026-09-23)
 **추가일**: 2026-09-23
 
 ## 요청 표준
@@ -12,7 +12,7 @@
 > 상세: [[references/daas-api-overview.md]]
 
 ```bash
-curl -X POST "${LM_API_BASE}/trend_finder/issue_list" \
+curl -X POST "https://listeningmind-data-api.ascentlab.io/trend_finder/issue_list" \
  -H "Content-Type: application/json" \
  -H "LM-API-KEY: $API_KEY" \
  -d '{"keyword": "로봇청소기", "gl": "kr", "period_days": 14, "limit": 50, "sort": "score", "order": "desc"}'

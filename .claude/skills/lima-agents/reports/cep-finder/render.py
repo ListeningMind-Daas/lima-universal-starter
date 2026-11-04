@@ -63,6 +63,7 @@ def load_run(run: Path) -> dict:
          "manifest": jload(run / "out/run_manifest.json", {}),
          "head": jload(run / "raw/head_ads_info.json", {}),
          "topup": jload(run / "out/topup_manifest.json", {}),
+         "journey_file": {k.replace("_", " "): v for k, v in (jload(run / "core/journey_stats.json", {}) or {}).items()},
          "paths": {}, "kwinfo": {}}
     for f in sorted(run.glob("raw/paths_*.json")):
         r = jload(f, {})
@@ -169,6 +170,33 @@ def journey_stats(anchor: str, paths: list, brand_rx: dict, tags: dict) -> dict:
             "tags": tagc.most_common(), "next": nxt.most_common(8), "prev": prev.most_common(8), "end": end.most_common(8)}
 
 
+_FILE_TAG = {"community": "커뮤니티", "channel": "채널"}
+
+
+def journey_for(D: dict, anchor: str | None, brand_rx: dict, tags: dict) -> dict | None:
+    """여정 지표의 단일 출처 — 허브 카드·브랜드 매트릭스·4분면·여정 블록이 모두 이 값을 쓴다.
+
+    core/journey_stats.json(엔진 집계)이 있으면 그 값을 그대로 쓰고, 없을 때만 raw/paths_*.json에서 다시 센다.
+    렌더러가 브랜드 도달을 따로 다시 세면 같은 페이지의 매트릭스와 라벨 서술이 어긋날 수 있어 한 곳에서 읽는다."""
+    if not anchor or anchor not in D["paths"]:
+        return None
+    e = D.get("journey_file", {}).get(anchor)
+    if not e:
+        js = journey_stats(anchor, D["paths"][anchor], brand_rx, tags)
+        js["source"] = "raw/paths 재집계"
+        return js
+    n = e.get("n") or 0; bp = e.get("brand_paths") or 0
+    brands = sorted((e.get("brands") or {}).items(), key=lambda kv: -kv[1])
+    tg = collections.Counter()
+    for k, v in (e.get("tags") or {}).items():
+        if not k.startswith("brand:"):
+            tg[_FILE_TAG.get(k, k)] += v
+    pair = lambda lst: [tuple(x) for x in lst or []]
+    return {"anchor": anchor, "n": n, "uniq": e.get("uniq"), "start": (e.get("pos") or {}).get("start", 0), "brand_paths": bp,
+            "reach": (bp / n) if n else None, "brands": brands, "tags": tg.most_common(),
+            "next": pair(e.get("next"))[:8], "prev": pair(e.get("prev"))[:8], "end": pair(e.get("end"))[:8], "source": "core/journey_stats.json"}
+
+
 # ────────────────────────── HTML 조각 ──────────────────────────
 def esc(s): return str(s)   # labels.json은 신뢰된 내부 작성물 — 인라인 HTML 허용
 
@@ -236,16 +264,36 @@ def trend_svg(months, vals, anomaly_months):
             f'<line id="xh" x1="0" y1="20" x2="0" y2="240" stroke="var(--ink3)" opacity="0"/><rect id="hover" x="50" y="20" width="800" height="220" fill="transparent"/></svg>'), m24, v24
 
 
+def _round_down(v: float) -> float:
+    """v 이하의 1·2·5×10^k 중 가장 큰 값 — 크기 범례 기준값."""
+    import math
+    if v <= 0:
+        return 0.0
+    mag = 10 ** math.floor(math.log10(v))
+    return next(m * mag for m in (5, 2, 1) if m * mag <= v)
+
+
 def season_svg(series: list[tuple[str, dict, str]], shade_peak: dict):
-    lo, hi = 0.4, max(1.6, max((max(idx.values()) for _, idx, _ in series if idx), default=1.6) + 0.1)
+    """월별 시즌 지수 — y축 0 기준(_shared-core §7 · lexicon-gate §3) · 0.5 간격 눈금 · 음영(성수기 상위 3개월)은 범례에 적는다."""
+    vmax = max((max(idx.values()) for _, idx, _ in series if idx), default=1.6)
+    step = 0.5 if vmax <= 3 else 1.0
+    lo, hi = 0.0, max(1.5, (int((vmax + 0.1) / step) + 1) * step)
     def Y(v): return 200 - (v - lo) / (hi - lo) * 170
     def X(k): return 60 + (k - 1) * (780 / 11)
-    parts = [f'<line x1="60" y1="{Y(1):.1f}" x2="840" y2="{Y(1):.1f}" stroke="var(--ink3)" stroke-dasharray="4 4"/><text x="846" y="{Y(1) + 4:.1f}" font-size="10.5" fill="var(--ink3)">1.0 평월</text>']
+    parts = []
+    t = 0.0
+    while t <= hi + 1e-9:
+        dash = "" if t == 0 else ' stroke-dasharray="2 5"'
+        parts.append(f'<line x1="60" y1="{Y(t):.1f}" x2="840" y2="{Y(t):.1f}" stroke="var(--line)"{dash}/>'
+                     f'<text x="54" y="{Y(t) + 4:.1f}" font-size="10.5" fill="var(--ink3)" text-anchor="end">{t:.1f}</text>')
+        t = round(t + step, 6)
+    parts.append(f'<line x1="60" y1="{Y(1):.1f}" x2="840" y2="{Y(1):.1f}" stroke="var(--ink3)" stroke-dasharray="4 4"/><text x="846" y="{Y(1) + 4:.1f}" font-size="10.5" fill="var(--ink3)">1.0 평월</text>')
     if shade_peak:
-        top3 = sorted(shade_peak, key=lambda k: -shade_peak[k])[:3]
+        top3 = sorted(sorted(shade_peak, key=lambda k: -shade_peak[k])[:3])
         for k in top3:
             parts.append(f'<rect x="{X(k) - 780 / 22:.1f}" y="30" width="{780 / 11:.1f}" height="170" fill="var(--s-2)" opacity=".06"/>')
     colors = ["var(--s-1)", "var(--s-2)", "var(--s-3)"]; lx = 60
+    first = next((lab for lab, idx, _ in series if idx), "")
     for i, (label, idx, _) in enumerate(series[:3]):
         if not idx: continue
         c = colors[i]; p = [(X(k), Y(idx[k])) for k in range(1, 13)]
@@ -253,39 +301,78 @@ def season_svg(series: list[tuple[str, dict, str]], shade_peak: dict):
         parts += [f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" fill="{c}"/>' for x, y in p]
         parts.append(f'<text x="{lx}" y="22" font-size="11.5" fill="{c}" font-weight="700">— {label} (진폭 {amplitude(idx)})</text>'); lx += 260
     parts += [f'<text x="{X(k):.1f}" y="222" font-size="11" fill="var(--ink3)" text-anchor="middle">{k}월</text>' for k in range(1, 13)]
-    return f'<svg viewBox="0 0 880 240" width="100%" role="img" aria-label="월별 시즌 지수">{"".join(parts)}</svg>'
+    leg = "y축 = 시즌 지수(0 기준 · 1.0 = 평월 · 달력월 중앙값 ÷ 12개월 평균)"
+    if shade_peak:
+        parts.append('<rect x="60" y="238" width="14" height="10" fill="var(--s-2)" opacity=".18"/>')
+        leg = f"음영 = {first} 지수 상위 3개월({', '.join(f'{k}월' for k in top3)}) · " + leg
+        parts.append(f'<text x="80" y="247" font-size="10.5" fill="var(--ink3)">{leg}</text>')
+    else:
+        parts.append(f'<text x="60" y="247" font-size="10.5" fill="var(--ink3)">{leg}</text>')
+    return f'<svg viewBox="0 0 880 256" width="100%" role="img" aria-label="월별 시즌 지수 (y축 0 기준)">{"".join(parts)}</svg>'
 
 
-def quadrant_svg(points: list[dict], legend: str | None = None):
+def bubble_r(v: float, vmax: float, rmax: float = 36.0) -> float:
+    """버블 반지름 — 면적 비례(r ∝ √값). 순위로 크기를 정하면 값 차이보다 면적 차이가 크게 보인다."""
+    if not vmax or not v or v <= 0:
+        return 0.0
+    return rmax * (v / vmax) ** 0.5
+
+
+def quadrant_svg(points: list[dict], legend: str | None = None, x_threshold: float = 0.0, x_threshold_label: str | None = None):
+    """기회 4분면. 세로 구분선 = 정의된 기준값(x_threshold — 대표 검색어 YoY 또는 0%), 가로 구분선 = 브랜드 도달 50%.
+    x·y 중 하나라도 미측정인 항목은 그리지 않고 차트 아래 목록으로 낸다(가운데 임의 좌표에 두지 않는다).
+    버블 면적 = 규모(월 검색량) — 크기 범례를 함께 그린다."""
     if not points:
         return '<p class="note">허브가 없어 4분면을 그리지 않음 — 상황형 진입 0은 측정값이며 기회 부재의 증명이 아님.</p>'
-    xs = [p["x"] for p in points if p["x"] is not None] or [-0.1, 0.1]
-    xlo, xhi = min(xs) - 0.07, max(xs) + 0.07; xmid = (xlo + xhi) / 2
+    plotted = [p for p in points if p.get("x") is not None and p.get("y") is not None]
+    outside = [p for p in points if p not in plotted]
+    xs = [p["x"] for p in plotted] + [x_threshold]
+    pad = max(0.05, (max(xs) - min(xs)) * 0.15)
+    xlo, xhi = min(xs) - pad, max(xs) + pad
     def qx(g): return 80 + (g - xlo) / (xhi - xlo) * 720
     def qy(r): return 230 - r * 190
+    xt = qx(x_threshold)
+    thr_txt = x_threshold_label or f"{x_threshold * 100:+.1f}%"
     parts = [f'<rect x="80" y="40" width="720" height="190" fill="none" stroke="var(--line)"/>',
-             f'<line x1="{qx(xmid):.1f}" y1="40" x2="{qx(xmid):.1f}" y2="230" stroke="var(--line)" stroke-dasharray="4 4"/><line x1="80" y1="{qy(0.5):.1f}" x2="800" y2="{qy(0.5):.1f}" stroke="var(--line)" stroke-dasharray="4 4"/>',
-             '<text x="86" y="54" font-size="11" fill="var(--ink3)">브랜드 연결 높음 · 하락폭 큼 → 방어(연결 브랜드)/공략(경쟁 브랜드)</text>',
-             '<text x="794" y="54" font-size="11" fill="var(--ink3)" text-anchor="end">연결 높음 · 상대 견조 → 방어</text>',
-             '<text x="86" y="224" font-size="11" fill="var(--ink3)">연결 낮음 · 하락폭 큼 → 선점(시즌 창·저경쟁 시)</text>',
-             '<text x="794" y="224" font-size="11" fill="var(--ink3)" text-anchor="end">연결 낮음 · 상대 견조 → 선점</text>']
+             f'<line x1="{xt:.1f}" y1="40" x2="{xt:.1f}" y2="230" stroke="var(--ink3)" stroke-dasharray="4 4"/><line x1="80" y1="{qy(0.5):.1f}" x2="800" y2="{qy(0.5):.1f}" stroke="var(--ink3)" stroke-dasharray="4 4"/>',
+             '<text x="86" y="54" font-size="11" fill="var(--ink3)">브랜드 연결 높음 · 기준보다 하락 → 방어(연결 브랜드)/공략(경쟁 브랜드)</text>',
+             '<text x="794" y="54" font-size="11" fill="var(--ink3)" text-anchor="end">연결 높음 · 기준보다 견조 → 방어</text>',
+             '<text x="86" y="224" font-size="11" fill="var(--ink3)">연결 낮음 · 기준보다 하락 → 선점(시즌 창·저경쟁 시)</text>',
+             '<text x="794" y="224" font-size="11" fill="var(--ink3)" text-anchor="end">연결 낮음 · 기준보다 견조 → 선점</text>']
+    for r in (0, 0.25, 0.5, 0.75, 1.0):                                  # y 눈금
+        parts.append(f'<line x1="76" y1="{qy(r):.1f}" x2="80" y2="{qy(r):.1f}" stroke="var(--ink3)"/><text x="72" y="{qy(r) + 4:.1f}" font-size="10" fill="var(--ink3)" text-anchor="end">{r * 100:.0f}%</text>')
+    vmax = max((p.get("v") or 0) for p in points) or 1
     colors = ["var(--s-3)", "var(--s-2)", "var(--s-1)"]
-    for i, p in enumerate(points):
-        x = qx(p["x"] if p["x"] is not None else xmid); y = qy(p["y"] if p["y"] is not None else 0.5)
-        r = 18 + 18 * (p.get("size_rank", 0.5))
+    for i, p in enumerate(plotted):
+        x = qx(p["x"]); y = qy(p["y"]); r = max(bubble_r(p.get("v") or 0, vmax), 3)
         if p.get("grey"):
-            parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.0f}" fill="none" stroke="var(--ink3)" stroke-width="2" stroke-dasharray="5 4"/>'
+            parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="none" stroke="var(--ink3)" stroke-width="2" stroke-dasharray="5 4"/>'
                          f'<text x="{x:.1f}" y="{y - r - 6:.1f}" font-size="12" font-weight="750" fill="var(--ink2)" text-anchor="middle">{p["label"]}</text>'
                          f'<text x="{x:.1f}" y="{y + r + 14:.1f}" font-size="10.5" fill="var(--ink3)" text-anchor="middle">{p["sub"]}</text>')
         else:
             c = colors[i % 3]
-            parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.0f}" fill="{c}" opacity=".18" stroke="{c}" stroke-width="2"/>'
+            parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{c}" opacity=".18" stroke="{c}" stroke-width="2"/>'
                          f'<text x="{x:.1f}" y="{y + 4:.1f}" font-size="12" font-weight="750" fill="var(--ink)" text-anchor="middle">{p["label"]}</text>'
                          f'<text x="{x:.1f}" y="{y + 18:.1f}" font-size="10.5" fill="var(--ink2)" text-anchor="middle">{p["sub"]}</text>')
-    _legend = legend or 'x = 허브 결합쿼리 YoY(최신월 제외) ← 하락 · 견조 →  |  y = 여정 경로 중 브랜드 결합 노드 도달 비율 · 버블 = 허브 규모 · 점선 = 미측정'
-    parts.append(f'<text x="440" y="258" font-size="11" fill="var(--ink3)" text-anchor="middle">{esc(_legend)}</text>')
-    parts.append(f'<text x="{qx(xlo) + 2:.1f}" y="244" font-size="10" fill="var(--ink3)">{xlo * 100:+.0f}%</text><text x="{qx(xmid):.1f}" y="244" font-size="10" fill="var(--ink3)" text-anchor="middle">{xmid * 100:+.0f}%</text><text x="{qx(xhi) - 2:.1f}" y="244" font-size="10" fill="var(--ink3)" text-anchor="end">{xhi * 100:+.0f}%</text>')
-    return f'<svg viewBox="0 0 880 270" width="100%" role="img" aria-label="기회 4분면">{"".join(parts)}</svg>'
+    _legend = legend or 'x = 진입점 상황+품목 검색어 YoY(최신월 제외) · y = 여정 경로 중 브랜드 결합 항목 도달 비율 · 점선 원 = 근거 보강 필요'
+    parts.append(f'<text x="{qx(xlo) + 2:.1f}" y="244" font-size="10" fill="var(--ink3)">{xlo * 100:+.0f}%</text>'
+                 f'<text x="{xt:.1f}" y="244" font-size="10" fill="var(--ink2)" font-weight="700" text-anchor="middle">기준 {thr_txt}</text>'
+                 f'<text x="{qx(xhi) - 2:.1f}" y="244" font-size="10" fill="var(--ink3)" text-anchor="end">{xhi * 100:+.0f}%</text>')
+    parts.append(f'<text x="440" y="262" font-size="11" fill="var(--ink3)" text-anchor="middle">{esc(_legend)}</text>')
+    # 크기 범례 — 면적 비례: 기준값 v의 원과 v/4의 원(반지름 절반)
+    ref = _round_down(vmax)
+    parts.append('<text x="80" y="300" font-size="10.5" fill="var(--ink3)">버블 면적 = 규모(월 검색량)</text>')
+    cx0 = 270
+    for v in (ref, ref / 4):
+        rr = bubble_r(v, vmax)
+        parts.append(f'<circle cx="{cx0 + rr:.1f}" cy="{330 - rr:.1f}" r="{rr:.1f}" fill="none" stroke="var(--ink3)"/>'
+                     f'<text x="{cx0 + 2 * rr + 6:.1f}" y="{330 - rr + 4:.1f}" font-size="10.5" fill="var(--ink3)">{v:,.0f}/월</text>')
+        cx0 += 2 * rr + 80
+    svg = f'<svg viewBox="0 0 880 340" width="100%" role="img" aria-label="기회 4분면">{"".join(parts)}</svg>'
+    if outside:
+        items = " · ".join(f'<b>{esc(p["label"])}</b> {(p.get("v") or 0):,}/월 — {esc(p.get("missing") or "미측정")}' for p in outside)
+        svg += f'<p class="note">차트 밖(축 값 미측정 — 좌표를 지어내지 않음): {items}</p>'
+    return svg
 
 
 def competition_extra(HG: dict, labels: dict) -> str:
@@ -429,11 +516,14 @@ def evidence_block(HG: dict, labels: dict) -> str:
     ev = HG.get("evidence") or {}; lt = HG.get("longtail") or {}; out = []
     if ev.get("measured"):
         a, n = ev.get("aio_exposure") or (0, 0)
+        empty = f' · 빈 응답 {ev["n_empty"]}건(데이터 공백 · 분모 제외)' if ev.get("n_empty") else ""
         paa = "".join(f'<li><code>{q["q"]}</code> <span class="veil" style="display:inline">[{q["seed"]}]</span></li>' for q in (ev.get("paa") or [])[:12]) or "<li>없음</li>"
         rel = " · ".join(f'<code>{x["q"]}</code>' for x in (ev.get("related") or [])[:16]) or "없음"
         out.append('<div class="sl" style="margin-top:18px">검색결과 화면·AI 검색 요약에서 발췌한 근거 <span class="badge b-derived">EXTRACTED</span></div>')
-        out.append(f'<p class="sub">serp {ev.get("n_seeds", 0)}시드(30크레딧/시드) · AI Overview 노출 <b>{a}/{n}</b> · PAA {len(ev.get("paa") or [])} · 연관검색 {len(ev.get("related") or [])} · 증거 {ev.get("items_n", 0)}건 — 조회 시점 스냅샷, 가설의 원천이지 소비자 발화가 아님</p>')
+        out.append(f'<p class="sub">serp {ev.get("n_seeds", 0)}시드(30크레딧/시드) · AI Overview 노출 <b>{a}/{n}</b>{empty} · PAA {len(ev.get("paa") or [])} · 연관검색 {len(ev.get("related") or [])} · 증거 {ev.get("items_n", 0)}건 — 저장된 스냅샷(실시간 아님), 가설의 원천이지 소비자 발화가 아님</p>')
         out.append(f'<div class="hgrid"><div><div class="sl">PAA(사람들이 함께 묻는 질문)</div><ul class="note" style="padding-left:18px;margin-top:4px">{paa}</ul></div><div><div class="sl">연관검색</div><p class="note" style="margin-top:4px">{rel}</p></div></div>')
+    elif ev.get("n_empty"):
+        out.append(f'<p class="sub">serp 저장본 없음 — 빈 응답 {ev["n_empty"]}건(데이터 공백) · AI Overview 노출은 판단하지 않았다</p>')
     if lt.get("measured"):
         rows = lt.get("rows") or []; top = [r for r in rows if r["v"]][:14]; lang = [r for r in rows if r.get("language_only")][:14]
         nz = lt.get("noise") or {}
@@ -661,7 +751,7 @@ def provenance_block(HG: dict, labels: dict) -> str:
         ("광고비·경쟁", "keyword_info · ads_metrics.cpc(USD) · competition", "구글 광고 추정가 · 시점 변동", "동일"),
         ("검색어 의도 구분", "keyword_info(all) · intents{i,n,c,t}", "정보형/내비게이션/비교형/구매형 플래그 → '어떤 사람 → 무엇으로'", "raw/*kwinfo_all*.json"),
         ("세부 검색어(롱테일)·표현 근거", "intent_finder(volume_threshold=0) → keyword_info ads_info", "시드별 연관 검색어 수확 후 1크레딧/건 실측 · 0볼륨은 표현 근거(규모 합산 금지)", "raw/longtail_*.json · raw/longtail_ads_info*.json · raw/benefit_ads_info*.json"),
-        ("검색결과 화면 근거(AI 요약·연관 질문·자연결과)", "serp · ai_overview · people_also_ask · organic", "조회 시점 스냅샷(발췌) · 가설의 원천이지 소비자 발화 아님", "raw/serp_*.json (request_at 보존)"),
+        ("검색결과 화면 근거(AI 요약·연관 질문·자연결과)", "serp · ai_overview · people_also_ask · organic", "저장된 스냅샷(발췌·실시간 아님) · 가설의 원천이지 소비자 발화 아님", "raw/serp_*.json (collected_at 보존)"),
         ("여정·동반 경로(co_path)", "path_finder", "앵커 검색어 전후 세션 인접 경로 · 가설 어휘 포함 경로 수 · 집계 행동(개인 여정 아님)", "raw/paths_*.json"),
         ("가설 판정(근거 있음/기각/재분류)", "엔진 S5", "예측 검색어가 수집 검색어와 일치(엄격=완전·접두/접미, 느슨=부분) · 요건: 구매 전·Why 필수·When|Where·3요소·검색어 ≥1 · 후보 = 매칭 ≥3 & 볼륨합 ≥500" + (f" · 이 run 기각률 {(hg_hy.get('rejection_rate') or 0):.0%}" if hg_hy.get("status") == "confirmed" else ""), "core/hub_graph.json › hypotheses"),
         ("볼륨합(근거 강도)", "엔진 S5", "매칭 검색어 volume_avg 합 · 표현 근거(0)·기능 외(off_feature) 제외 · 규모가 아니라 근거 강도", "동일"),
@@ -700,8 +790,10 @@ def key_messages_block(labels: dict, auto: list) -> str:
 
 
 # ────────────────────────── 비즈니스 사용자 어휘 사전 (2026-08-22) ──────────────────────────
-# 최종 HTML의 텍스트 노드에만 적용한다(태그 속성·<script> 제외). 순서가 중요 — 긴 구절을 먼저.
+# 최종 HTML의 텍스트 노드에만 적용한다(태그 속성·<script>·<code>·파일 경로 제외). 한 번 훑기로 치환한다 — 치환 결과를 다시 치환하지 않고,
+# 같은 위치에서는 긴 구절이 이긴다. 이웃 낱말과 겹친 결과('롱테일 키워드' → '세부 검색어 검색어')는 collapse_repeats가 하나로 줄인다(2026-10-14).
 GLOSSARY = [
+    ("롱테일 키워드", "세부 검색어"), ("롱테일 쿼리", "세부 검색어"), ("상황 결합쿼리", "상황+품목 검색어"), ("상황 슬롯", "상황 요소"),
     ("EXECUTIVE SUMMARY", "핵심 요약 (EXECUTIVE SUMMARY)"), ("APPENDIX A · 데이터 · 방법 · 게이트", "부록 A · 데이터 · 방법 · 품질 점검"),
     ("Feature Association", "기능 연관 구조"), ("Context × 브랜드 겹침 매트릭스", "상황별 브랜드 점유 비교"), ("Context×브랜드 매트릭스", "상황별 브랜드 점유 비교"), ("Context×브랜드", "상황별 브랜드 점유"),
     ("Nano Intent", "세부 의도"), ("Constraint", "제약"), ("Avoidance", "회피 요인"), ("Opportunity Backlog", "실행 과제"),
@@ -709,7 +801,7 @@ GLOSSARY = [
     ("스위칭 방향성", "브랜드 전환 흐름"), ("스위칭", "브랜드 전환"), ("이탈 트리거", "전환 직전 검색어(이탈)"), ("유입 트리거", "전환 직전 검색어(유입)"),
     ("허브 레지스트리", "진입점 목록"), ("가설 허브", "가설 기반 진입점"), ("상속 허브", "상위 품목 분석에서 가져온 진입점"), ("패밀리 허브", "사전 기반 진입점"), ("회색 허브", "근거 보강 필요 진입점"), ("허브", "진입점"),
     ("패밀리", "상황군"), ("7W 슬롯", "7가지 상황 요소(7W)"), ("슬롯 커버리지", "상황 요소 충족"), ("빈 슬롯", "빈 요소"), ("슬롯", "상황 요소"),
-    ("결합쿼리", "상황+품목 검색어"), ("결합형", "조합 검색어"), ("브리지", "연결 검색어"), ("헤드텀", "대표 검색어"), ("롱테일 코퍼스", "세부 검색어 집합"), ("롱테일", "세부 검색어"), ("코퍼스 봉인", "수집 검색어 범위 내 매칭"), ("코퍼스", "수집 검색어"),
+    ("결합쿼리", "상황+품목 검색어"), ("결합형", "조합 검색어"), ("브리지", "연결 검색어"), ("헤드텀", "대표 검색어"), ("롱테일 코퍼스", "세부 검색어 집합"), ("롱테일", "세부 검색어"), ("코퍼스 봉인 매칭", "수집 검색어 범위 내 일치"), ("코퍼스 봉인", "수집 검색어 범위 내 일치"), ("코퍼스", "수집 검색어"),
     ("언어층(0볼륨)", "표현 근거(검색량 미보고)"), ("언어층", "표현 근거"), ("렉심", "핵심 어휘"), ("자카드", "중복도"), ("포함도", "부분 중복도"),
     ("co_path", "동반 경로"), ("캔버싱", "전수 조회"), ("캔버스", "전수 조회"), ("AI Overview", "AI 검색 요약"), ("AIO", "AI 검색 요약"), ("PAA", "연관 질문"),
     ("블라인드 작성", "데이터 미열람 작성"), ("블라인드", "데이터 미열람"), ("post-hoc 태깅", "사후 연결"), ("post-hoc", "사후"), ("리플레이", "재계산"),
@@ -725,7 +817,8 @@ GLOSSARY = [
     ("KBF 층", "구매 결정 요인 층"), ("KBF로 강등", "구매 결정 요인으로 재분류"), ("KBF로", "구매 결정 요인으로"), ("KBF 이관", "구매 결정 요인 이관"), ("KBF(근거 키워드 병기 의무)", "구매 결정 요인(근거 검색어 병기)"),
     ("RTB 원천", "신뢰 근거 원천"), ("RTB 공백", "신뢰 근거 공백"), ("RTB 전달", "신뢰 근거 전달"),
     ("키워드", "검색어"),
-    # 치환 후 조사 보정
+]
+PARTICLE_FIX = [   # 치환 후 조사 보정 — 치환 결과 위에서 한 번 더 돈다
     ("진입점는", "진입점은"), ("진입점를", "진입점을"), ("진입점로", "진입점으로"), ("진입점가 ", "진입점이 "), ("진입점와", "진입점과"),
     ("상황군는", "상황군은"), ("상황군를", "상황군을"), ("상황군로", "상황군으로"), ("상황군가 ", "상황군이 "), ("상황군와", "상황군과"),
     ("검색어은", "검색어는"), ("검색어을", "검색어를"), ("검색어으로", "검색어로"), ("검색어이 ", "검색어가 "),
@@ -734,17 +827,35 @@ GLOSSARY = [
 ]
 
 
+_GLOSS_MAP = dict(GLOSSARY)
+_GLOSS_RX = re.compile("|".join(re.escape(a) for a, _ in sorted(GLOSSARY, key=lambda x: -len(x[0]))))
+_SKIP_RX = re.compile(r"(<script.*?</script>|<style.*?</style>|<code\b[^>]*>.*?</code>|<[^>]+>)", re.S)
+
+
+def friendly_text(seg: str) -> str:
+    """텍스트 한 조각(태그 없음)에 용어 사전 적용 — 한 번 훑기 · 조사 보정 · 파일 경로 보존 · 새로 생긴 낱말 반복 제거. export_suite도 이 함수를 쓴다."""
+    def fn(t):
+        t = _GLOSS_RX.sub(lambda m: _GLOSS_MAP[m.group(0)], t)
+        for a, b in PARTICLE_FIX:
+            t = t.replace(a, b)
+        return t
+    parts = re.split(f"({_lx().PATH})", seg)                  # 파일 경로(raw/serp_*.json)는 원문 그대로
+    out = "".join(p if i % 2 else fn(p) for i, p in enumerate(parts))
+    return _lx().collapse_repeats(seg, out)
+
+
+def _lx():
+    import sys as _sys
+    if str(SKILLS_ROOT / "lima-agents") not in _sys.path:
+        _sys.path.insert(0, str(SKILLS_ROOT / "lima-agents"))
+    from lib import lexicon_check
+    return lexicon_check
+
+
 def friendly(html: str) -> str:
-    """태그·script 밖 텍스트에만 용어 사전 적용."""
-    parts = re.split(r"(<script.*?</script>|<[^>]+>)", html, flags=re.S)
-    out = []
-    for seg in parts:
-        if seg.startswith("<"):
-            out.append(seg); continue
-        for a, b in GLOSSARY:
-            seg = seg.replace(a, b)
-        out.append(seg)
-    res = "".join(out)
+    """태그·script·code·파일 경로 밖 텍스트에만 용어 사전 적용."""
+    parts = _SKIP_RX.split(html)
+    res = "".join(p if i % 2 else friendly_text(p) for i, p in enumerate(parts))
     # 받침 유무가 바뀐 치환어와 조사 사이에 닫는 태그가 끼는 경우의 후처리 (2026-08-30)
     res = re.sub(r"(요소|검색어)(</b>|</span>)으로", r"\1\2로", res)
     res = re.sub(r"(기준 축|진입점|상황군)(</b>|</span>)로", r"\1\2으로", res)
@@ -851,7 +962,7 @@ def build(run: Path, labels: dict, brand_map_path: Path | None) -> tuple[str, li
             h["intents"] = " · ".join(f'{it["keyword"]} {"/".join(k.upper() for k in "inct" if (it.get("intents") or {}).get(k))}' for it in kw_items)
         # 여정
         anchor = hs.get("journey_anchor") or next((a for a in D["paths"] if a in combos), None)
-        h["journey"] = journey_stats(anchor, D["paths"][anchor], brand_rx, tags) if anchor and anchor in D["paths"] else None
+        h["journey"] = journey_for(D, anchor, brand_rx, tags)
         hubs.append(h)
 
     # 허브 카드 HTML
@@ -936,8 +1047,8 @@ def build(run: Path, labels: dict, brand_map_path: Path | None) -> tuple[str, li
 
     # 여정 블록
     jblocks = []; all_j = {}
-    for a, paths in D["paths"].items():
-        all_j[a] = journey_stats(a, paths, brand_rx, tags)
+    for a in D["paths"]:
+        all_j[a] = journey_for(D, a, brand_rx, tags)
     jl = {j["anchor"]: j for j in labels.get("journeys") or []}
     for a, js in all_j.items():
         spec = jl.get(a, {})
@@ -977,12 +1088,19 @@ def build(run: Path, labels: dict, brand_map_path: Path | None) -> tuple[str, li
             mx.append(f'<div class="mr">{h["spec"].get("label")}</div><div class="c0">미측정</div><div class="c0">미측정</div><div class="c0">미측정</div><div class="c0">여정 미실측</div>')
 
     # 4분면
-    sizes = sorted(h["sum"] for h in hubs) or [1]
     pts = [{"label": h["spec"].get("short") or h["spec"].get("label", ""), "x": h["yoy"], "y": h["journey"]["reach"] if h["journey"] else None,
-            "grey": h["journey"] is None or h["spec"].get("status") == "grey",
-            "size_rank": sizes.index(h["sum"]) / max(len(sizes) - 1, 1),
+            "grey": h["journey"] is None or h["spec"].get("status") == "grey", "v": h["sum"],
+            "missing": " · ".join(x for x in (("전년 대비 미측정" if h["yoy"] is None else ""), ("여정 미실측 — 브랜드 도달 미측정" if not h["journey"] else "")) if x),
             "sub": f'{h["sum"]:,} · 도달 {pct(h["journey"]["reach"], 0) if h["journey"] else "미측정"} · 경쟁 {h["comp"] if h["comp"] is not None else "—"}'} for h in hubs]
-    qsvg = quadrant_svg(pts, labels.get("quadrant_legend"))  # 상속 배치 run은 labels로 범례를 정밀화(2026-08-30)
+    # 세로 구분선 = 정의된 기준값: labels.quadrant_x_threshold(소수) > 대표 검색어 YoY > 0% (데이터 범위 중앙값을 쓰지 않는다 — 2026-10-14)
+    if labels.get("quadrant_x_threshold") is not None:
+        qthr, qthr_lab = float(labels["quadrant_x_threshold"]), labels.get("quadrant_x_threshold_label")
+    elif (h_yoy_adj if anom else h_yoy) is not None:          # 이상치가 있으면 본문 서술과 같은 보정값을 쓴다
+        qthr = h_yoy_adj if anom else h_yoy
+        qthr_lab = f'대표 검색어 "{category}" {"보정 " if anom else ""}{qthr * 100:+.1f}%'
+    else:
+        qthr, qthr_lab = 0.0, "0%"
+    qsvg = quadrant_svg(pts, labels.get("quadrant_legend"), qthr, qthr_lab)  # 상속 배치 run은 labels로 범례를 정밀화(2026-08-30)
 
     # 백로그
     bl = labels.get("backlog") or {}

@@ -50,6 +50,7 @@ UNITS = {
     "path_finder":                 ("/path_finder",                 lambda k: 1, lambda k: k.get("unique_keywords", 0)),
     "path_finder/keyword_list":    ("/path_finder/keyword_list",    lambda k: 1, lambda k: k.get("returned", k.get("limit", 100))),
     "keyword_info":                ("/keyword_info",                lambda k: k.get("keywords", 0), lambda k: 0),
+    "keyword_info/monthly_volume": ("/keyword_info/monthly_volume", lambda k: 1, lambda k: 0),
     "serp":                        ("/serp",                        lambda k: k.get("keywords", 0), lambda k: 0),
     "trend_finder":                ("/trend_finder/issue_list",     lambda k: 1, lambda k: k.get("returned", k.get("limit", 50))),
 }

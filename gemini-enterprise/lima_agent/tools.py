@@ -312,7 +312,8 @@ async def serp(keyword: str, gl: str = "kr", device: str = "mobile", confirm: bo
     org = [{k: o.get(k) for k in ("position", "site_name", "title", "url") if o.get(k) is not None} for o in _serp.organic(resp)[:10]]
     return {"status": "ok", "blocks": _serp.block_counts(resp), "organic": org,
             "questions": _serp.questions(resp)[:10], "related": _serp.related_queries(resp)[:20],
-            "ai_overview": _serp.ai_overview_snippets(resp)[:5], "credits": credit}
+            "ai_overview": _serp.ai_overview_snippets(resp)[:5], "collected_at": resp.get("collected_at"),
+            "no_snapshot": not resp.get("data"), "credits": credit}
 
 
 async def trend_finder(keyword: str, gl: str = "kr", period_days: int = 14, limit: int = 20,

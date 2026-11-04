@@ -32,6 +32,8 @@ from pathlib import Path
 
 PROD_URL = "https://listeningmind-data-api.ascentlab.io/openapi.json"
 PINNED = Path(__file__).with_name("openapi-prod-pinned.json")
+# 지난 판 보관 — pin 이 덮어쓰기 전 판을 여기 둔다. 판이 바뀌어도 옛 명세를 다시 볼 수 있게 한다
+HISTORY = Path(__file__).with_name("openapi-prod-history")
 SCHEMA = "lm-openapi-pin/v2"
 
 
@@ -134,6 +136,15 @@ def load(source: str | None = None) -> dict:
         return pin
 
 
+def load_version(version: str) -> dict:
+    """그 판의 축약 명세 — 고정 사본이 그 판이면 고정 사본, 아니면 보관본. 둘 다 없으면 고정 사본(판 비교는 호출부가 한다)."""
+    pin = load("pinned")
+    if pin["info"]["version"] == version:
+        return pin
+    old = HISTORY / f"{version}.json"
+    return json.loads(old.read_text(encoding="utf8")) if old.is_file() else pin
+
+
 _CACHE: dict = {}
 
 
@@ -209,6 +220,11 @@ def main(argv=None) -> int:
         return 0
     raw = json.loads(Path(a.src).read_text(encoding="utf8")) if a.src else fetch()
     if a.cmd == "pin":
+        prev = load("pinned")
+        if prev["info"]["version"] != raw["info"]["version"]:
+            HISTORY.mkdir(exist_ok=True)
+            (HISTORY / f"{prev['info']['version']}.json").write_text(PINNED.read_text(encoding="utf8"), encoding="utf8")
+            print(f"지난 판 보관 — {prev['info']['version']} → {HISTORY.name}/")
         PINNED.write_text(json.dumps(normalize(raw, a.date), ensure_ascii=False, indent=1) + "\n", encoding="utf8")
         print(f"고정 사본 갱신 — {raw['info']['version']} · {a.date} → {PINNED.name}")
         return 0

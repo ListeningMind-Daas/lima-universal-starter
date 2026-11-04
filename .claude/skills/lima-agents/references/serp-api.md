@@ -2,13 +2,13 @@
 
 **엔드포인트**: `POST /serp`
 **목적**: 키워드의 검색결과 화면(SERP)을 블록 단위로 조회
-**래퍼**: `api/serp.py` · `fetch()` + 파싱 헬퍼 6종
-**검증**: 운영 OpenAPI v1.0.13 파라미터 대조(2026-10-13) + 실측 응답 (gl=kr · num=10 · 2026-08-25 전기자전거)
+**래퍼**: `api/serp.py` · `fetch()` + 파싱 헬퍼 7종
+**검증**: 운영 OpenAPI v1.0.15 파라미터 대조(2026-11-04) + 실측 응답 (gl=kr · num=10 · 2026-08-25 전기자전거)
 
 > ⚠️ **단가 주의** — 아래 예시 응답의 `cost_detail.total_cost: 10` 은 **2026-08-19 시점 스냅샷**이다.
 > serp 단가는 2026-08-28 실측으로 **30 / 키워드**로 인상됐다. 견적은 30/kw 로 잡는다.
-> 운영 OpenAPI v1.0.13 의 `input_cost` 기본값도 30 이라 문서와 실측이 일치한다.
-> 같은 판에서 응답에 `collected_at`(SERP 스냅샷 수집 시각·UTC)이 추가됐고, 요청에 `user_query`·`response_format` 이 생겼다
+> 운영 OpenAPI v1.0.15 의 `input_cost` 기본값도 30 이라 문서와 실측이 일치한다.
+> 2026-08-19 이후 명세에서 응답에 `collected_at`(SERP 스냅샷 수집 시각·UTC)이 추가됐고, 요청에 `user_query`·`response_format` 이 생겼다
 > ([[references/daas-api-overview.md]] 공통 파라미터). 최신 단가는 공개 API 문서 https://listeningmind-data-api.ascentlab.io/ 를 대조한다.
 
 ## 요청 표준
@@ -28,8 +28,28 @@ curl -X POST "https://listeningmind-data-api.ascentlab.io/serp" \
 호출이 정당한 경우 · SEO 진입 가능성 판단(누가 상위에 있나) · 콘텐츠 기회 발굴(PAA 질문 문구) ·
 AI Overview 노출 내용 확인 · 경쟁사 SERP 장악력 점검.
 
-**시계열 비교에는 쓸 수 없다.** 반환값은 조회 시점의 스냅샷이다. 시점 비교가 필요하면
+**시계열 비교에는 쓸 수 없다.** 반환값은 실시간 크롤이 아니라 **저장된 스냅샷**이다(OpenAPI v1.0.15 설명). 그 시점은 요청 시각(`request_at`)이 아니라 **`collected_at`**(스냅샷 수집 시각·UTC)이다. 차트·리포트에는 `collected_at` 을 적고 "현재 검색결과"로 서술하지 않는다. 시점 비교가 필요하면
 `keyword_info`의 `features`(월 그레인)를 쓴다.
+
+## 스냅샷 신선도
+
+**실측** (2026-11-02 · v1.0.15 · mobile · num=20). 표본은 일반적인 키워드 40개념 × 3개국 + 미국 긴 키워드 30건이다.
+
+| 표본 | 데이터 있음 | 나이 중앙값 | 최소~최대 | 1년 초과 |
+|---|---|---|---|---|
+| kr 40 | 40 | 30.5일 | 4.6~519.5일 | 3 |
+| us 40 | 40 | 16.0일 | 0.7~663.2일 | 1 |
+| jp 40 | 40 | 31.4일 | 5.2~643.3일 | 8 |
+| us 긴 키워드 30 | 22 | 77.7일 | 4.8~654.2일 | 5 |
+
+나이와 빈 응답 비율은 표본에 따라 달라질 수 있다. 시장별 대표값으로 쓰지 말고 **호출한 키워드마다 나이를 계산**한다.
+
+- **빈 응답** · 스냅샷이 없으면 `200 OK` + `data: []` + `collected_at: null` + **0크레딧**이다. "검색결과 없음"이나 "AIO 미노출"이 아니라 데이터 공백이다.
+- **호출이 수집을 유발하는가** · 약 11분 뒤 재호출한 빈 응답 8건은 그대로 비어 있었다. 더 긴 간격은 미확인이다.
+- **처음 부른 키워드** · 자체 호출 기록에 없는 키워드 30건 중 24시간 이내 스냅샷은 0건이었다(계정 전체 이력은 미조회).
+- **재호출** · 10분 간격 20쌍과 1.35일 이내 저장본 24쌍은 `collected_at` 과 데이터가 모두 같았다.
+- **갱신 주기는 미확인** · 스냅샷이 바뀐 것으로 관측된 간격 4건이 33~34일이었다. 4건뿐이라 주기로 쓰지 않는다.
+- **한계** · 이 절의 수치는 운영 서버에서 다시 재지 않았다. 저장 스냅샷이라는 설명은 운영 OpenAPI 에 있다.
 
 ## 연관 키워드 묶음의 AIO 수집 (2026-09-23 · 2026-10-13 갱신)
 
@@ -50,19 +70,19 @@ AI Overview 노출 내용 확인 · 경쟁사 SERP 장악력 점검.
 검색량이 필요하면 `keyword_info(ads_metrics)`(1/kw)로 확인해 임계값 미만을 빼고 검색량 내림차순 상위 N만 남긴다.
 
 **③ serp 수집** — 목록의 키워드마다 `serp.fetch()` → `serp.ai_overview_snippets()` 로 AIO 본문을 뽑는다.
-빈 리스트는 "그 시점 AIO 미노출"이다(오류 아님). 인용 출처는 `ai_overview` 블록의 `snippet_links[]` 에 있다.
+`data` 가 있는데 AIO 본문이 빈 리스트면 "그 스냅샷에서 AIO 미노출"이고(오류 아님), `data: []` 면 미노출이 아니라 데이터 공백이다. 블록 단위 인용 출처는 `ai_overview` 블록의 `references[]`(`title`·`url`·`source`·`origin_url`, 때로 `snippet`)에 있다 — `serp.ai_overview_references()`. `snippet_links`(`text`·`url`)는 블록 단위가 아니라 `text_blocks` 안 문장·목록 항목에 붙는 링크 조각이다 — 2026-08~09 저장본 200개 중 131개에 있었고 10-25 응답 2건에는 없었다.
 응답의 `collected_at` 을 키워드별로 기록한다.
-- **AIO 노출 비율** = AIO 가 나온 키워드 수 / 조회 키워드 수
+- **AIO 노출 비율** = AIO 가 나온 키워드 수 / `data` 가 있는 키워드 수 — 빈 응답 수는 따로 적는다
 - `features=["ai_overview"]` 로 블록을 좁히는 요청은 **미실측**이다. 과금이 키워드당 정액이라 전체를 받아
   파싱해도 비용은 같다 — 기본은 전체 조회
 - 동시 요청은 1 (429 방지)
 
-**비용** = ① 확장 호출 합 + (② `ads_metrics` 를 쓰면 1 × 확장 키워드 수) + ③ 30 × 최종 키워드 수.
+**비용** = ① 확장 호출 합 + (② `ads_metrics` 를 쓰면 1 × 확장 키워드 수) + ③ 30 × 최종 키워드 수(빈 응답은 0이라 상한이다).
 예: intent_finder 1회(100개 반환) 230 + ads_metrics 100 + serp 상위 50개 1,500 = 1,830 (계산 예시 · 실소비는 각 응답 `cost_detail`).
 
 **미리 거르기 판단** — `keyword_info(all)` 의 `f_ai_overview`(10/kw)로 노출 키워드만 골라 serp 를 부르면,
 AIO 노출 비율이 약 2/3 미만일 때 전체 serp 보다 싸다(10 + 30p < 30 → p < 2/3 · 파생 계산).
-단, `f_ai_overview` 는 월 그레인이고 serp 는 조회 시점 스냅샷이라 둘이 어긋날 수 있다 — 거른 목록의 비율을 "전체 노출 비율"로 쓰지 않는다.
+단, `f_ai_overview` 는 월 그레인이고 serp 는 `collected_at` 시점 스냅샷이라 둘이 어긋날 수 있다 — 거른 목록의 비율을 "전체 노출 비율"로 쓰지 않는다.
 
 ## 파라미터
 
@@ -70,9 +90,9 @@ AIO 노출 비율이 약 2/3 미만일 때 전체 serp 보다 싸다(10 + 30p < 
 |---|---|---|---|
 | `keyword` | 문자열 | (필수) | **단일 키워드**. 배열이 아니다 |
 | `gl` | 문자열 | (필수) | `kr` · `jp` · `us` |
-| `num` | 정수 | 20 | **10 또는 20만 허용**. 과금은 num과 무관 |
+| `num` | 정수 | 20 | **10 또는 20만 허용**. 응답·과금 모두 달라지지 않았다(2026-11-02 kr 40쌍) |
 | `device` | 문자열 | `mobile` | `mobile` · `desktop` — 모바일/데스크톱 SERP는 블록 구성이 다르다 |
-| `features` | 배열/null | null | 특정 블록만 요청. 생략 시 전체 |
+| `features` | 배열/문자열/null | null | 블록 유형 **최대 1개**(초과 시 422 · 단일 문자열도 허용). 생략·빈 리스트면 전체. 허용값 13종: `ai_overview` · `organic_results` · `people_also_search_for` · `related_searches` · `people_also_ask_for` · `video_results` · `short_videos` · `images` · `knowledge_panel` · `featured_snippet` · `sitelinks` · `app_results` · `top_stories` |
 
 `num` 값은 래퍼가 화이트리스트로 검증한다 (`NUM_CHOICES`).
 
@@ -98,12 +118,12 @@ AIO 노출 비율이 약 2/3 미만일 때 전체 serp 보다 싸다(10 + 30p < 
 **`data`는 SERP 블록의 배열이며 화면 순서(`sequence`)를 따른다.** `organic_results`는
 결과 1건마다 별도 블록으로 반복된다(`position` 보유).
 
-### 블록 type (실측 확인 · `전기자전거` kr/mobile/num=10 · 2026-08-25)
+### 블록 type (실측 확인 · `전기자전거` kr/mobile/num=10 · 2026-08-25 · `ai_overview` 행은 2026-10-25 재확인)
 
 | type | 개수 | 주요 필드 |
 |---|---|---|
 | `organic_results` | 17 | `position` · `site_name` · `title` · `url` · `snippet` · `thumbnail` |
-| `ai_overview` | 1 | `text_blocks[].list[].snippet` · `snippet_links[]` |
+| `ai_overview` | 1 | `text_blocks[]` — `type: paragraph` 는 자기 `snippet`, `type: list` 는 `list[].snippet`(다시 `list[]` 가 중첩될 수 있음) · `references[]` · `ved` |
 | `people_also_ask_for` | 1 | `items[].question` · `url` · `title` |
 | `related_searches` | 1 | `items[].query` |
 | `people_also_search_for` | 1 | `items[].query` |
@@ -112,8 +132,9 @@ AIO 노출 비율이 약 2/3 미만일 때 전체 serp 보다 싸다(10 + 30p < 
 | `images` | 2 | `grid` |
 
 블록 구성은 키워드마다 다르다(예: `knowledge_panel`은 이 키워드에 없음). `num=10` 요청에
-`organic_results`가 17개 반환됐다 — `num`은 자연결과 개수를 정확히 고정하지 않는다.
-실제 개수는 응답에서 세어 확인한다.
+`organic_results`가 17개 반환됐다 — `num`은 자연결과 개수를 고정하지 않는다.
+2026-11-02 kr 40쌍에서 `num=10`과 `num=20`의 `collected_at`·`data` 해시가 40/40 같았고 자연결과 수 중앙값은 둘 다 17이었다.
+`num`으로 응답 크기를 줄일 수 있다고 가정하지 말고, 실제 개수는 응답에서 세어 확인한다.
 
 ## 크레딧
 
@@ -121,8 +142,9 @@ AIO 노출 비율이 약 2/3 미만일 때 전체 serp 보다 싸다(10 + 30p < 
 total_cost = 30 (키워드당 · 입력 과금만 · 2026-08-28 실측 — 2026-08-19의 10에서 인상)
 ```
 
-`output_cost`는 0이라 반환 블록이 몇 개든 비용은 동일하다 — 4개 커넥터 중 가장 예측 가능한 단가다.
-(2026-08-19 라이브 OpenAPI `SerpCost.input_cost=10` → 2026-08-28 실측 30.)
+`output_cost`는 0이라 반환 블록이 몇 개든 비용은 동일하다 — 단가 자체는 예측 가능하다.
+스냅샷이 없어 `data: []` 인 응답은 **0크레딧**이다(2026-11-02 16회). 견적의 30/kw 는 상한으로 본다.
+(2026-08-19 라이브 OpenAPI `SerpCost.input_cost=10` → 2026-08-28 실측 30. `num=10`도 30이다 — 2026-11-02 kr 40건.)
 
 ## 오류 코드
 
@@ -142,7 +164,8 @@ serp.block_counts(r)          # {"organic_results": 17, "ai_overview": 1, ...}
 serp.organic(r)               # [{position, site_name, title, url, snippet}, ...] · position 순
 serp.related_queries(r)       # related_searches + people_also_search_for 통합·중복 제거
 serp.questions(r)             # [{question, url, title}, ...] · People Also Ask
-serp.ai_overview_snippets(r)  # AI 개요 본문 · 미노출 키워드는 빈 리스트
+serp.ai_overview_snippets(r)  # AI 개요 본문(문단 + 목록 항목, 화면 순서) · 미노출 키워드는 빈 리스트
+serp.ai_overview_references(r)  # AI 개요 인용 출처 [{title, url, source, origin_url}]
 serp.blocks(r, "video_results")
 ```
 

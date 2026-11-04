@@ -1,7 +1,7 @@
-# lima-universal 스타터 v1.4.0
+# lima-universal 스타터 v1.5.0
 
 ListeningMind DaaS 검색 행동 데이터로 시장·브랜드·상품·검색 여정 질문에 답하는 **마켓 인텔리전스 에이전트**입니다.
-같은 분석 스킬(오케스트레이터 `lima-agents` · 표준 베이스 `listeningmind-universal`)을 세 가지 도구에서 씁니다.
+같은 분석 스킬(오케스트레이터 `lima-agents` · 표준 베이스 `listeningmind-universal` · 차트 엔진 `lm-chart`)을 세 가지 도구에서 씁니다.
 
 | 쓰는 도구 | 시작 방법 | 안내서 |
 |---|---|---|

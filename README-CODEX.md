@@ -1,7 +1,7 @@
-# lima-universal 스타터 패키지 (Codex 판) v1.4.0
+# lima-universal 스타터 패키지 (Codex 판) v1.5.0
 
 ListeningMind DaaS 검색 행동 데이터 기반 **마켓 인텔리전스 에이전트 워크스페이스**의 Codex 판입니다.
-Claude Code 판과 같은 스킬 두 개(오케스트레이터 `lima-agents` · 표준 베이스 `listeningmind-universal`)를
+Claude Code 판과 같은 스킬 세 개(오케스트레이터 `lima-agents` · 표준 베이스 `listeningmind-universal` · 차트 엔진 `lm-chart`)를
 Codex 구조(`.agents/skills/` · `AGENTS.md`)로 배치했습니다.
 
 ## 시작하기
@@ -33,9 +33,10 @@ Codex 구조(`.agents/skills/` · `AGENTS.md`)로 배치했습니다.
 ```
 AGENTS.md                  운영 규칙 (Codex 대응표 + 라우팅·판정·온보딩·가드레일)
 .codex/config.toml         이 워크스페이스 전용 Codex 설정 — 네트워크 허용
-.agents/skills/            분석 스킬 2종
+.agents/skills/            분석 스킬 3종
   └ lima-agents/               오케스트레이터 — Explorer·Report·CEP Finder 3모드 · API 래퍼 · setup_key.py
   └ listeningmind-universal/   표준 베이스 — 7 표준잡 · 시드 검증 · 준비도 게이트 · 리포트 렌더러
+  └ lm-chart/                  차트 엔진 — 표준 차트 26종 (lima-agents 의 차트 다리가 가리키는 폴더)
 90_Output/                 결과물 저장 폴더 (HTML 리포트는 여기 저장되고 브라우저로 엽니다)
 ```
 

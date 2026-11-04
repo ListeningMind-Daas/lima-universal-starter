@@ -8,8 +8,8 @@
 > **최상위 근거** · 공개 API 문서 https://listeningmind-data-api.ascentlab.io/ — 단가·파라미터·응답 필드는 **항상 여기를 먼저 대조한다.**
 > 이 문서는 그 스냅샷이며, 문서와 어긋나면 **문서가 이긴다.**
 >
-> **스냅샷 기준** · `listeningmind-data-api` 운영 **v1.0.13** · 확인일 **2026-10-13** (serp 단가는 2026-08-28 실측으로 30/kw 갱신).
-> 직전 스냅샷 대비 `/ai_overview/analyze`가 삭제됐고, 모든 엔드포인트에 선택 파라미터 `is_skills`(bool · 기본 false)가 추가됐다.
+> **스냅샷 기준** · `listeningmind-data-api` 운영 **v1.0.15** · 고정 사본 **2026-10-30** · 운영 명세와 일치 재확인 **2026-11-04** (serp 단가는 2026-08-28 실측으로 30/kw 갱신).
+> 직전 스냅샷(v1.0.13) 대비 `POST /keyword_info/monthly_volume`이 추가됐고, 모든 POST 에 선택 파라미터 `skill_desc`가 추가됐다. 기존 엔드포인트의 필수값·선택지·단가 기본값은 변경 없음.
 > API 스펙이 갱신되면 이 절과 커넥터 명세 6종의 파라미터·단가를 재대조한다.
 
 모든 엔드포인트에 `api/` 래퍼가 있다. **호출 원칙은 보수적** — 표준 파이프라인은
@@ -19,6 +19,7 @@ cluster_finder + keyword_info 2개로 완결하고, 나머지는 해당 분석�
 |---|---|---|---|
 | POST /cluster_finder | 시드 키워드의 관계 그래프·커뮤니티 | `cluster_finder.fetch` | ✅ 표준 파이프라인 |
 | POST /keyword_info | 키워드별 검색량·인텐트·인구·SERP·48개월 시계열 | `keyword_info.fetch_all` | ✅ 표준 파이프라인 (data_type=all) |
+| POST /keyword_info/monthly_volume | 키워드 1개의 월별 검색량만 (경량 · DaaS 키 전용) | `keyword_info.fetch_monthly_volume` | 시계열 하나만 빠르게 볼 때 (여러 키워드는 keyword_info `ads_info` 배치) |
 | POST /cluster_finder/keyword_list | 관계 그래프의 키워드 리스트만 (경량) | `cluster_finder.fetch_keyword_list` | 그래프 구조 불필요 시 |
 | POST /intent_finder/keyword_list | 인텐트 유형별 키워드 리스트 확장 | `intent_finder.fetch` | keyword_info의 intents 벡터로 부족할 때만 |
 | POST /path_finder | 검색 여정 (A→B→C 시퀀스) | `path_finder.fetch` | 여정 분석이 필요한 질문에만 (키워드 수 비례 과금) |
@@ -29,10 +30,11 @@ cluster_finder + keyword_info 2개로 완결하고, 나머지는 해당 분석�
 
 연관 키워드 묶음의 AIO 원문은 `*/keyword_list`·`trend_finder` 확장 → 유니크 목록 → `serp` 로 모은다 ([[references/serp-api.md]]).
 
-**공통 파라미터 (v1.0.x 부터 · 모든 POST)** · `user_query`(이 호출을 유발한 사용자 질의 원문 — 선택, 이력에 적재) ·
+**공통 파라미터 (v1.0.x 부터 · POST)** · `user_query`(이 호출을 유발한 사용자 질의 원문 — 선택, 이력에 적재) ·
 `is_skills`(스킬 경유 호출 여부 — 선택·기본 false, 이력에 적재 · v1.0.13~. `DaasClient.post()` 가 body 에 없으면 `true` 를 넣는다) ·
+`skill_desc`(스킬 경유 호출일 때 실행 중인 스킬 정보 — 선택 · JSON 객체 · 명세상 MCP 경유 호출용, 이력에 적재 · v1.0.15 고정 사본부터. `DaasClient` 는 보내지 않는다) ·
 `response_format`(`json` 기본 / `download_url` — 대용량 조회 시 `data` 대신 `download` 메타(주소·sha256·크기)만 오고 파일로
-내려받는다 · `DaasClient.download(response)` 가 sha256 대조까지 한다). `*/keyword_list` 경량 계열은 `response_format` 만 받는다.
+내려받는다 · `DaasClient.download(response)` 가 sha256 대조까지 한다). `cluster_finder/keyword_list`·`path_finder/keyword_list` 는 `user_query` 를 받지 않는다.
 
 ### 커넥터별 상세 명세
 
@@ -60,10 +62,11 @@ cluster_finder + keyword_info 2개로 완결하고, 나머지는 해당 분석�
 **크레딧 참고** (읽기용 요약 — 견적 숫자는 `api/spec.py` 가 운영 명세에서 읽는다. 둘이 다르면 명세가 이긴다)
 - cluster_finder · **150 + 반환 고유 키워드 수 × 50** (관계 수가 아님 · 실측 18건 전수 검증)
 - keyword_info · data_type별 차등 — `ads_metrics`·`ads_info` 1 / kw · `all` 10 / kw (인텐트·인구·시계열 필요 분석은 all, 볼륨 사전 검증은 ads_metrics)
+- keyword_info/monthly_volume · **1 / 키워드** (단건 · 출력 과금 없음 · 2026-11-04 1건 실측)
 - path_finder · **50 + 40 × 경로에 등장한 고유 키워드 수** (경로 수가 아님 · 실측 5,050·6,770·8,410) — 래퍼 기본 limit=150으로 통제
 - intent_finder · **30 + 2 × 반환 키워드 수** (실측 42건 전수 일치 · limit=100 도달 시 230)
 - `*/keyword_list` 경량 계열(cluster_finder·path_finder·intent_finder) · **30 + 반환 키워드 × 2** 공통
-- serp · **30 / 키워드** (입력 과금만 · 출력 과금 없음 · 2026-08-28 실측 — 2026-08-19의 10에서 인상)
+- serp · **30 / 키워드** (입력 과금만 · 출력 과금 없음 · 2026-08-28 실측 — 2026-08-19의 10에서 인상 · 스냅샷이 없는 빈 응답은 0 — 2026-11-02 실측)
 - trend_finder · **50 (시드당) + 2 × 반환 이슈 항목 수** (2026-09-23 실측 · limit=3 → 56) — `limit` 으로 통제, 래퍼 기본 50
 - usage/summary · 조회 전용 (사용량 정산)
 

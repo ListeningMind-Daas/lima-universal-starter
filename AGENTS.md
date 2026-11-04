@@ -147,6 +147,7 @@ AskUserQuestion으로 다음 6문항을 확인 후 `about-me.md`를 생성·갱�
 |---|---|
 | `lima-agents` | **메인 오케스트레이터.** Explorer(인터랙티브 클러스터 탐색) · Report(질문 코드별 정적 리포트) · CEP Finder(상황형 진입점 발굴) 3모드 + DaaS API 래퍼·커넥터 명세 6종 |
 | `listeningmind-universal` | **표준 베이스 스킬.** 산업 무관 7 표준잡 · 4계층 패키지(질문 프레임 → 해석 사전 → 표현 규율 → 실행 파이프라인) · 시드 검증 · 준비도 게이트 · HTML 리포트 렌더러 |
+| `lm-chart` | **차트 엔진.** 데이터 파일(csv·json)을 표준 차트 26종 중 하나로 — "이 데이터 차트로 그려줘" 같은 단발 요청에 쓴다. 내장 리포트 빌더는 자체 렌더러로 그려 이 엔진을 부르지 않는다. API 호출 없음. `lima-agents` 의 `lib/viz.py`·`scripts/viz.py` 는 이 폴더를 가리키는 다리라 **함께 있어야 한다** |
 
 ### 라우팅 우선순위
 
@@ -225,7 +226,8 @@ lima-universal-starter/
 │       │   ├── explorers/cluster-explorer/       # Explorer 모드 (references/ + prepare.py)
 │       │   ├── reports/                          # Report 모드 (_shared/ · b1-segment-intent/ · cep-finder/)
 │       │   └── scripts/                          # run_explorer.py · run_analysis.py · run_cep_finder.py · run_gate.py · setup_key.py · check_lexicon.py
-│       └── listeningmind-universal/              # 표준 베이스 (구조는 스킬 README 참고)
+│       ├── listeningmind-universal/              # 표준 베이스 (구조는 스킬 README 참고)
+│       └── lm-chart/                             # 차트 엔진 — lima-agents 가 가리키는 다리의 목적지 (공개 저장소 ListeningMind-Daas/lm-chart-skill 과 같은 엔진)
 ├── 00_Context/                   # 전역 컨텍스트 (매 세션 자동 로드)
 │   │                             #  ↓ 아래는 최초 온보딩 시 생성됨 (스타터에는 미포함)
 │   ├── about-me.md               # 사용자 프로필 (Q&A 기록)

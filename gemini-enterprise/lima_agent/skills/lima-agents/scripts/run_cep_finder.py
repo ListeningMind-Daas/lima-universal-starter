@@ -1201,7 +1201,7 @@ class Engine:
                 self.ledger.check(SERP_COST, f"serp {s_}")
                 r = serp.fetch(self._client(), s_, gl=self.gl, num=20)
                 self.ledger.add("serp", {"kw": s_}, r); self.save_raw(name, r)
-            ts = r.get("request_at") or time.strftime("%Y-%m-%dT%H:%M:%S")
+            ts = r.get("collected_at") or ""   # 근거 시점은 요청 시각이 아니라 스냅샷 수집 시각
             aio = serp.ai_overview_snippets(r); qs = serp.questions(r); rel = serp.related_queries(r); org = serp.organic(r)
             if aio: aio_hit += 1
             for t in aio: items.append({"seed": s_, "kind": "aio", "text": t[:400], "collected_at": ts, "grade": "extracted"})
@@ -1213,10 +1213,12 @@ class Engine:
             for q in rel: related.append({"seed": s_, "q": q})
             for o in org[:6]:
                 items.append({"seed": s_, "kind": "organic", "text": (o.get("title") or "")[:160], "snippet": (o.get("snippet") or "")[:300], "url": o.get("link") or o.get("url"), "collected_at": ts, "grade": "extracted"})
-        n = sum(1 for s_ in seeds if self._load_raw_or(f"serp_{self._slug(s_)}") is not None)
-        res = {"measured": n > 0, "seeds": seeds, "n_seeds": n, "aio_exposure": (aio_hit, n), "items": items, "paa": paa, "related": related,
-               "note": "SERP·AIO·PAA는 조회 시점 스냅샷(extracted) — 소비자 발화가 아니라 가설의 원천이며, 확증은 키워드 실측으로만"}
-        self.log(f"  증거 {len(items)}건 · AIO 노출 {aio_hit}/{n} · PAA {len(paa)} · 연관검색 {len(related)}")
+        raws = [self._load_raw_or(f"serp_{self._slug(s_)}") for s_ in seeds]
+        n = sum(1 for x in raws if (x or {}).get("data"))   # 빈 응답(data: [])은 AIO 미노출이 아니라 데이터 공백이다
+        n_empty = sum(1 for x in raws if x is not None and not x.get("data"))
+        res = {"measured": n > 0, "seeds": seeds, "n_seeds": n, "n_empty": n_empty, "aio_exposure": (aio_hit, n), "items": items, "paa": paa, "related": related,
+               "note": "SERP·AIO·PAA는 저장된 스냅샷(extracted · 시점은 collected_at) — 소비자 발화가 아니라 가설의 원천이며, 확증은 키워드 실측으로만"}
+        self.log(f"  증거 {len(items)}건 · AIO 노출 {aio_hit}/{n} · 빈 응답 {n_empty} · PAA {len(paa)} · 연관검색 {len(related)}")
         return res
 
     def s3_longtail(self, sense: dict, known: set) -> dict:
@@ -1366,7 +1368,7 @@ class Engine:
                     self.ledger.check(SERP_COST, f"서사 시드 {ns}")
                     r = serp.fetch(self._client(), ns, gl=self.gl, num=20)
                     self.ledger.add("serp", {"kw": ns, "what": f"서사 시드 {c['dim']}:{c['label']}"}, r); self.save_raw(name, r)
-                ts = r.get("request_at") or ""; items = []
+                ts = r.get("collected_at") or ""; items = []
                 for txt in serp.ai_overview_snippets(r): items.append(("aio", txt))
                 for q in serp.questions(r): items.append(("paa", (q.get("question") or q.get("title") or "") + " " + (q.get("snippet") or "")))
                 for o in serp.organic(r)[:8]: items.append(("organic", (o.get("title") or "") + " — " + (o.get("snippet") or "")))

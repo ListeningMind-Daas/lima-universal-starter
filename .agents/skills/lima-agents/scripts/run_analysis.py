@@ -1,10 +1,10 @@
 """lima-agents · 분석 실행 · 질문 코드 받아 prepare → template 렌더 → HTML 저장.
 
 Usage:
-    python3 scripts/run_analysis.py <CODE> "<CATEGORY>" <GL> <API_KEY>
+    python3 scripts/run_analysis.py <CODE> "<CATEGORY>" <GL>
 
 예:
-    python3 scripts/run_analysis.py B-1 "전기자전거" kr D-xxx...
+    python3 scripts/run_analysis.py B-1 "전기자전거" kr
 
 Output:
     ~/Downloads/lima-agents-<CODE>-<CATEGORY_SAFE>-<TS>/report.html

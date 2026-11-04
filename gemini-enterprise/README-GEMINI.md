@@ -1,4 +1,4 @@
-# lima-universal 리서치 에이전트 (Gemini Enterprise 판) v1.4.0
+# lima-universal 리서치 에이전트 (Gemini Enterprise 판) v1.5.0
 
 ListeningMind DaaS 검색 행동 데이터로 시장·브랜드·상품·검색 여정 질문에 답하는 에이전트를
 **귀사 GCP 프로젝트**의 Agent Engine 에 배포하고 Gemini Enterprise 에 등록하는 패키지입니다.
@@ -71,7 +71,7 @@ python3 deploy/smoke.py --project <프로젝트> --location <리전> --resource 
 
 ```
 lima_agent/            ADK 에이전트 (agent.py · tools.py · instruction.md)
-  └ skills/            분석 규칙과 API 래퍼 — lima-agents · listeningmind-universal
+  └ skills/            분석 규칙과 API 래퍼 — lima-agents · listeningmind-universal · lm-chart(차트 엔진 — lima-agents 의 차트 다리가 가리킨다)
 deploy/                deploy.py · smoke.py · selfcheck.py · requirements.txt
 ```
 
