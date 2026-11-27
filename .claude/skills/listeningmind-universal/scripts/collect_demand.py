@@ -1086,7 +1086,7 @@ def main() -> int:
         if name == "share":
             p.add_argument("--candidates", type=int, default=20, help="미등재 브랜드 후보 수")
         if name == "content":
-            p.add_argument("--serp-top", type=int, default=0, help="serp 로 볼 상위 검색어 수(키워드당 30)")
+            p.add_argument("--serp-top", type=int, default=0, help="serp 로 볼 상위 검색어 수(키워드당 serp 단가 · 고정 명세)")
     a = ap.parse_args()
     return {"plan": cmd_plan, "expand": cmd_expand, "collect": cmd_collect, "build": cmd_build, "report": cmd_report,
             "rising": cmd_rising, "explain": cmd_explain, "share": cmd_share, "content": cmd_content}[a.cmd](a)

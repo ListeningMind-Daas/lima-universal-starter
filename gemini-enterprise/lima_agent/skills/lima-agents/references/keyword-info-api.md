@@ -33,29 +33,48 @@ curl -X POST "https://listeningmind-data-api.ascentlab.io/keyword_info" \
 - 1000개 조회 (최대) → 10,000 크레딧
 - (`ads_metrics`/`ads_info`는 동일 건수에 1/10 비용)
 
-## 단건 월별 검색량 · `POST /keyword_info/monthly_volume`
+## 월별 검색량 (배치 · 기간 지정) · `POST /keyword_info/monthly_volume`
 
-키워드 **1개**의 `monthly_volume`만 돌려주는 경량 엔드포인트. 운영 명세 **v1.0.15**부터 지원한다. 분석 파이프라인은 아래 배치 경로를 쓴다.
-**DaaS(data) 키 전용**. 래퍼 `keyword_info.fetch_monthly_volume(client, keyword, gl=…)`.
+키워드 **최대 1,000개**의 `monthly_volume`만 돌려주는 경량 엔드포인트. API **v1.0.20**(2026-11-13 확인)부터 배치 조회다 — 이전 판의 단건 본문(`keyword` 문자열)은 없어졌고 `keywords` 배열이 필수다.
+**DaaS(data) 키 전용**. 래퍼 `keyword_info.fetch_monthly_volume(client, keywords, gl=…, date_from=…, date_to=…)` · 1,000개를 넘으면 `fetch_monthly_volume_all`.
 
 | 파라미터 | 필수 | 설명 |
 |---|---|---|
-| `keyword` | ✅ | 키워드 1개 (문자열 · 배열 아님) |
+| `keywords` | ✅ | 키워드 배열 · 1~1,000개 (중복은 입력 순서를 유지한 채 제거) |
 | `gl` | ✅ | `kr` · `jp` · `us` |
+| `date_from` | — | 조회 시작 월 `YYYY-MM` (해당 월 포함) |
+| `date_to` | — | 조회 종료 월 `YYYY-MM` (해당 월 포함) |
 | `user_query` · `response_format` · `is_skills` · `skill_desc` | — | 공통 파라미터 ([[references/daas-api-overview.md]]) |
 
-- 응답 `data` = `[{keyword, monthly_volume: [{month, gg, nv, total}, …]}]` — 명세 설명상 `/keyword_info` 응답의 같은 항목과 **값이 동일**.
-  색인에 없거나 월별 검색량이 없으면 빈 리스트. 네이버 검색량 미수집 월은 `nv_code: 1`
-- 크레딧 · **input 1 / output 0** (명세 기본값 · 2026-11-04 1건 실측 total_cost 1 · 그 호출은 48개월 반환)
-- 언제 쓰나 · 시계열 하나만 빠르게 볼 때. 키워드가 여럿이면 `keyword_info(data_type="ads_info")` 배치(1/kw · 최대 1,000개 · `ads_metrics`까지 포함)가
-  같은 단가로 한 번에 받으므로 그쪽을 쓴다
+- **기간 규칙** · `date_from`·`date_to` 를 모두 생략하면 제공 범위 전체(색인된 최신 월 기준 최근 4년). 하나만 보내면 다른 쪽은 제한 없음.
+  `date_to` 가 `date_from` 보다 이르거나 두 값 사이가 48개월을 넘으면 422(래퍼가 미리 거른다). 데이터에 없는 월은 결과에서 빠진다.
+  최신 월은 수집 주기에 따라 이번 달보다 늦을 수 있다
+- **기간 선택은 이 엔드포인트에만 있다** · `/keyword_info`(`ads_metrics`·`ads_info`·`all`)에는 기간 파라미터가 없고 `monthly_volume` 이 항상 제공 범위 전체로 온다
+- 응답 `data` = `[{keyword, monthly_volume: [{month, gg, nv, total}, …]}]` — 명세 설명상 `/keyword_info` 응답의 같은 항목과 **값이 동일**(기간을 주면 그 월만).
+  색인에 없거나 (기간 내) 월별 검색량이 없는 키워드는 **빠진다** · 모두 없으면 빈 리스트. 네이버 검색량 미수집 월은 `nv_code: 1`
+- 크레딧 · **반환된 행 1개당 input 1 / output 0** (`cost_detail.input_count` = 과금된 행 수 · 2026-11-13 실측 2건)
+  - 데이터가 없는 키워드는 응답에서 빠지고 과금되지 않는다 — kr 3개 요청(1개는 없는 키워드) · 기간 3개월 → 2행 · `total_cost` 2 (1건)
+  - **표기 변형 행도 과금된다** — us `refrigerator` 1개 요청 → 3행(`refrigerators` · `fridge fridge` · `refrigerator`, 값은 행마다 같음) · `total_cost` 3 (1건).
+    요청 키워드 수는 상한이 아니다 — 견적은 요청 키워드 수로 잡되, 실제 소진은 `cost_detail.total_cost` 로 기록한다
+  - 행 순서는 요청 순서와 다를 수 있다(kr 요청 냉장고·자전거 → 응답 자전거·냉장고). `data[0]` 을 쓰지 말고 keyword 로 고르고, 변형 행을 더하지 않는다
+- 언제 쓰나 · 시계열만 필요하거나 특정 기간의 월만 필요할 때. `ads_metrics`(평균 검색량·CPC·경쟁도)까지 함께 필요하면 `keyword_info(data_type="ads_info")` 를 쓴다(같은 1/kw · 기간 지정 없음)
 
 ```bash
 curl -X POST "https://listeningmind-data-api.ascentlab.io/keyword_info/monthly_volume" \
  -H "Content-Type: application/json" \
  -H "LM-API-KEY: $API_KEY" \
- -d '{"keyword": "냉장고", "gl": "kr", "is_skills": true}'
+ -d '{"keywords": ["냉장고", "자전거"], "gl": "kr", "date_from": "2026-08", "date_to": "2026-10", "is_skills": true}'
 ```
+
+## 볼륨 기준월 조회 (무료) · `POST /keyword_info/status`
+
+운영 명세 v1.0.29(2026-11-27 확인)에서 생겼다. 검색량 데이터의 기준월(구글·네이버 각각 제공되는 최신 월)과 그 값을 마지막으로
+확인한 시각(UTC)을 돌려준다. 국가 구분 없이 기준월 하나 · 무료(`cost_detail.total_cost` 0) · DaaS 키 전용.
+
+- **래퍼**: `api/keyword_info.py` · `fetch_status(client, user_query=None)` — 본문은 공통 파라미터만(`user_query`·`is_skills`·`skill_desc`)
+- **응답 `data`**: `google_month`·`naver_month`(YYYY-MM) · `google_month_fetch_time`·`naver_month_fetch_time`(UTC)
+- 기준월은 매시 확인된다 — 확인 시각이 1시간 넘게 지났으면 최근 확인이 실패한 것이다(명세 설명)
+- 쓰임: 새 달 데이터가 들어왔는지를 크레딧 없이 확인한다(월 갱신 감지). 실측 응답은 아직 없다 — 명세 예시만 확인
 
 ## 응답 · data_type=all 전체 구조
 
@@ -129,11 +148,11 @@ curl -X POST "https://listeningmind-data-api.ascentlab.io/keyword_info/monthly_v
 
 | 필드 | 의미 | 사용자 질문 매핑 |
 |---|---|---|
-| `volume_avg` | 월평균 검색량 | "이 키워드 얼마나 검색되나?" |
-| `volume_total` | 누적 검색량 | "연간 총 검색량은?" |
+| `volume_avg` | **최근 3개월** 월평균 검색량(12개월 평균 아님) | "요즘 얼마나 검색되나?" — 계절 품목 순위·합계엔 쓰지 않는다 |
+| `volume_total` | 최근 12개월 합 | "연간 총 검색량은?" — 계절 품목 순위·합계의 기준 |
 | `volume_trend` | 최신 월 ÷ 3개월 전 월 − 1 (소수 둘째 자리 **버림**, -1~∞) | "최근 석 달 사이 움직였나?" — 한 달 대 한 달 비교라 시즌·일시 급등에 크게 흔들린다. 판정은 `monthly_volume` 전년 동기로 |
-| `gg_volume_avg` | 구글만 월평균 (한국은 낮음) | "구글에서 얼마나?" |
-| `nv_volume_avg` | 네이버만 월평균 (한국 강세) | "네이버에서 얼마나?" |
+| `gg_volume_avg` | 구글만 최근 3개월 평균 (한국은 낮음) | "구글에서 얼마나?" |
+| `nv_volume_avg` | 네이버만 최근 3개월 평균 (한국 강세) | "네이버에서 얼마나?" |
 
 > 집계 기간(공개 문서 'ListeningMind Data API 기술 자료' 응답 필드 정의 · 2026-10-19 실측 대조): `volume_avg` = 최근 3개월 월별 검색량 평균 · `volume_total` = 최근 12개월 합 · `volume_trend` = 3개월 전 대비 최근 월 증감률(비율값, 0.19 = +19%). 실측 '검색 데이터 분석'(kr): 7~9월 28·30·27 → avg 28, 6월 10 → trend (27−10)/10 = 1.7 — 응답값과 일치. `gg_`·`nv_` 접두 필드도 같은 기간.
 > **관측된 일치(2026-10-25 운영 응답 1건 · 키워드 4개 × 합계·구글·네이버 = 12값, 선크림·썬크림 구글 계열이 같아 독립 11값)** — 정의로 확정하지 않는다: `trunc((M[최신] − M[최신−3]) / M[최신−3], 2)` — `M`은 `monthly_volume` 의 같은 채널 값, 끝자리는 반올림이 아니라 **버림**(예: −0.0973 → −0.09, −0.4482 → −0.44). 반올림으로 대조하면 어긋난다. 다른 표본에서는 일치하는 식을 찾지 못한 기록이 있고 원인은 미확인이다(버림·반올림 차이, 마지막 달 정정 시점 차이 가능성). 표본을 넓혀 다시 대조하기 전까지 판정 근거로 쓰지 않는다는 원칙을 유지한다(한 달 대 한 달 비교라 변동도 크다). 같은 응답에서 `volume_avg`(최근 3개월 평균, 소수점 버림)·`volume_total`(최근 12개월 합)도 12값 모두 일치했다. 키워드 3개를 요청했는데 4행이 왔다(표기 변형 '썬크림' 추가 ).

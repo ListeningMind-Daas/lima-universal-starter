@@ -119,7 +119,8 @@ class DaasClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
-    def post(self, endpoint: str, body: dict, retries: int = 2) -> dict:
+    def post(self, endpoint: str, body: dict, retries: int = 2, timeout: int | None = None) -> dict:
+        """timeout 을 주면 이 호출에만 쓴다(없으면 self.timeout) — 실시간 수집처럼 오래 걸리는 엔드포인트용."""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         if IS_SKILLS and "is_skills" not in body:
             body = {**body, "is_skills": True}
@@ -132,7 +133,7 @@ class DaasClient:
         for attempt in range(retries + 1):
             try:
                 req = urllib.request.Request(url, data=data, headers=headers)
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
                     return json.loads(resp.read().decode("utf-8"))
             except urllib.error.HTTPError as e:
                 # 429·5xx 재시도

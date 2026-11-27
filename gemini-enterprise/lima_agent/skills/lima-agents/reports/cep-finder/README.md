@@ -74,7 +74,7 @@ sense-file에 `category`(품목) · `alias_groups` · `own_brand` · `own_lines`
 Context×브랜드 매트릭스는 기능 모드에서 기본 생략(`--with-context-matrix`).
 
 ### v0.5 추가 — S2 증거 · S3 롱테일 · S5 가설 선행
-- **S2** `serp`(시드당 30) — 품목 + 별칭군 헤드 + 성립 브리지 + `sense.evidence_seeds`(상한 `--serp-max` 12). AIO·PAA·연관검색·자연결과를 인용 원문·수집시각과 함께 `raw/serp_*.json`에 보존(grade extracted). 01 섹션 `{{EVIDENCE_BLOCK}}`.
+- **S2** `serp`(시드당 SERP_COST — 고정 명세의 /serp 단가, 2026-11-27 API v1.0.29 기준 10) — 품목 + 별칭군 헤드 + 성립 브리지 + `sense.evidence_seeds`(상한 `--serp-max` 12). AIO·PAA·연관검색·자연결과를 인용 원문·수집시각과 함께 `raw/serp_*.json`에 보존(grade extracted). 01 섹션 `{{EVIDENCE_BLOCK}}`.
 - **S3** `intent_finder vt=0`(시드당 30+2N) — 품목 + `sense.longtail_seeds` + 공간 시드(`sense.space_seeds`, 기본 어댑터 spaces×3) → `ads_info` 1/kw. **0볼륨은 언어층으로 보존**(규모 합산 금지), 노이즈는 개수·볼륨 양 기준 플래그만. `hub_graph.longtail`.
 - **S5** 가설 파일이 없으면 `core/hypothesis_tasks.json`을 발주(증거·코퍼스·7W 템플릿) → 세션 LLM이 `core/hypotheses.json`을 쓰고 `--hypotheses`로 재실행(0크레딧). 코퍼스 봉인 매칭 → supported/unsupported 보존 · 성립 요건(pre·W1·W2|W3·3슬롯) + HUB_FLOOR 통과만 허브 후보(`CEP-{cat}-Hnn`) · **기각률 0% = G14 편향 경고**. 03 섹션 `{{HYPOTHESIS_BLOCK}}`.
 - 편향 통제 규칙: `--blind`로 발주(코퍼스·여정 노드 제외)하고 가설은 증거만 보고 쓴다. keywords_expected는 예측이며 안 맞으면 unsupported로 남는다. 확증은 `--match strict`(완전/접두·접미 일치) 권장.

@@ -2,7 +2,7 @@
 name: listeningmind-universal
 description: Industry-agnostic ListeningMind (리스닝마인드) search-behavior analysis skill — the standard base that industry or customer-specific overlays sit on. Use it whenever a user asks a market, category, brand, product-planning, audience, content, search-journey, or go-to-market question in any industry — e.g. laptops/IT devices, fashion, travel, education, SaaS, pet, furniture, automotive, HR/recruiting, B2B, services — or when the industry is unspecified ("○○ 시장 분석해줘", "○○ 수요 추이", "○○ 브랜드 검색 점유", "○○ 검색 여정", "○○ CEP 찾아줘", "○○ 콘텐츠 기회", "지금 진입해도 되나"). Routes every request into the standard 7 jobs (수요·트렌드 / 니즈·구매요인 CEP·KBF / 검색여정 CDJ / 경쟁·브랜드 SoV / 콘텐츠·기회 / 세분화·타겟팅 / 종합·진입) and runs the 4-layer package — ① question frames ② interpretation dictionary (seed verification, entity/noise dictionary) ③ expression discipline (measured/derived/assumption/missing labels, credit ledger, monthly-grain caveats) ④ execution pipeline (keyword_info · intent_finder · cluster_finder · path_finder · serp, readiness gate, script-rendered HTML report, monthly monitoring). Also the starting point for building an industry or customer-specific overlay (read references/vertical-overlay-guide.md).
 metadata:
-  build: v1.5.0
+  build: v1.5.1
 ---
 
 # ListeningMind Universal — 범용 검색 행동 분석 스킬 (표준 베이스)

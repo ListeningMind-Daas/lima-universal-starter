@@ -191,13 +191,13 @@ AskUserQuestion으로 다음 6문항을 확인 후 `about-me.md`를 생성·갱�
 
 ## 데이터 소스 · API
 
-- **ListeningMind DaaS API**: `keyword_info`(검색량·트렌드·인구통계·SERP 피처), `intent_finder`(연관 쿼리), `cluster_finder`(클러스터·엔티티·관계구조), `path_finder`(검색 여정), `serp`(검색결과 화면 블록), `trend_finder`(시드 주변 최근 급부상 이슈)
+- **ListeningMind DaaS API**: `keyword_info`(검색량·트렌드·인구통계·SERP 피처), `intent_finder`(연관 쿼리), `cluster_finder`(클러스터·엔티티·관계구조), `path_finder`(검색 여정), `serp`(검색결과 화면 블록 · 저장본, `serp/live`는 실시간 수집), `trend_finder`(시드 주변 최근 급부상 이슈)
 - **엔드포인트**: 기본값은 운영 서버(`api/client.py`에 내장) — 별도 설정 불필요. 필요 시 `LM_API_BASE` 환경변수로 재정의
 - **데이터 호출 방식**: REST API + API 키(`LM-API-KEY` 헤더) 전용
 - **API 키**: `LM_API_KEY` → `00_Context/.lm-api-key` → `~/.config/listeningmind/api-key` 순서로 찾는다(`setup_key.py --check`로 확인, 없으면 위 "API 키 세팅 절차"로 온보딩)
 - **인구통계(성·연령)는 gl=kr 전용**: 미국(us)·일본(jp)은 keyword_info가 demography를 반환하지 않음. 해외 시장 리포트에서는 이를 "데이터 공백"이 아니라 "데이터 사양"으로 서술하고, 세그먼트 판단은 쿼리 언어·맥락 근거로만 수행
 - **커넥터 명세 (정본)**: 파라미터·응답 필드·크레딧 공식은 `.agents/skills/lima-agents/references/`의 커넥터별 문서 6종 — `cluster-finder-api.md` · `keyword-info-api.md` · `intent-finder-api.md` · `path-finder-api.md` · `serp-api.md` · `trend-finder-api.md`. 해당 커넥터를 처음 쓰는 분석 전에 읽는다 (지도·조합 원칙은 `daas-api-overview.md`)
-- **크레딧 단가 (실측)**: cluster_finder `150 + 반환 고유 키워드 수×50`(관계 수가 아님) / keyword_info `all` 10·`ads_metrics`·`ads_info` 1 per kw / intent_finder `30 + 반환키워드×2` / serp `30`(키워드당·출력 무과금 — 2026-08-28 실측, 2026-08-19의 `10`에서 인상) / **path_finder `50 + 경로 내 고유 키워드×40`**(경로 수가 아님 — 최고가, 여정이 판단에 필요할 때만 호출하고 limit으로 통제) / trend_finder `50 + 반환 이슈×2`(빈 결과는 과금 0 · limit으로 통제) / `*/keyword_list` 계열 `30 + 반환키워드×2`
+- **크레딧 단가 (실측)**: cluster_finder `150 + 반환 고유 키워드 수×50`(관계 수가 아님) / keyword_info `all` 10·`ads_metrics`·`ads_info` 1 per kw / intent_finder `30 + 반환키워드×2` / serp `10`(키워드당·출력 무과금 — API v1.0.29 · 2026-11-27. 2026-08-28~11-26 은 `30`) · serp/live(실시간 수집) `30` · keyword_info/status 무료 / **path_finder `50 + 경로 내 고유 키워드×40`**(경로 수가 아님 — 커넥터 중 크레딧이 가장 많이 든다, 여정이 판단에 필요할 때만 호출하고 limit으로 통제) / trend_finder `50 + 반환 이슈×2`(빈 결과는 과금 0 · limit으로 통제) / `*/keyword_list` 계열 `30 + 반환키워드×2`
 - **시드 검증 (본 실측 전 필수)**: cluster_finder·path_finder를 쓰기 전에 `listeningmind-universal/scripts/seed_check.py`로 시드 오염을 거른다 (시드당 약 100~230크레딧 — 반환 수 비례 · 규칙: `listeningmind-universal/references/seed-verification.md`). 오염된 시드의 하류 실측은 전량 폐기 대상
 - **Bash 호출**: `curl`, `python3`로 API 직접 호출 후 로컬에서 JSON 가공 (스킬별 references 참고)
 - **크레딧 용어 (혼동 금지)**: 호출 1건의 비용 = 응답 `cost_detail.total_cost` / `used_credits` = **월간 누적 사용량**(해당 월 리셋, 잔여량 아님). 리포트의 "이번 분석 소진"은 `total_cost` 합산, "누적"은 반드시 "월간 누적"으로 표기

@@ -21,7 +21,7 @@ v0.3 (2026-08-22) — 경쟁 Context 프레임 검토에서 드러난 갭:
   B7 스위칭 방향성        : 여정 내 자사→경쟁 / 경쟁→자사 / 왕복 순서와 스위치 직전 노드(트리거) 집계 — 세션 인접 집계이며 개인 이탈 아님
   B9 Context×브랜드 겹침  : 컨텍스트(4도어·대용량·1등급·키친핏·가격·후기…) × 브랜드 결합쿼리 볼륨 매트릭스 → 겹침 지수·무브랜드 여지(검색량 기준 근사)
 v0.5 (2026-08-22) — 샘플 리포트 대조에서 드러난 갭:
-  S2 증거  : serp(AIO·PAA·연관검색·자연결과) 시드당 30크레딧(SERP_COST · 2026-08-28 인상) · 인용 원문·수집시각 보존 · grade extracted
+  S2 증거  : serp(AIO·PAA·연관검색·자연결과) 시드당 SERP_COST 크레딧(고정 명세의 /serp 단가) · 인용 원문·수집시각 보존 · grade extracted
   S3 롱테일: intent_finder vt=0 (품목 + longtail_seeds + 공간 시드 T2) → ads_info 1/kw · 0볼륨은 언어층 보존 · 노이즈 플래그(개수·볼륨)
   S5 가설  : 가설 파일 없으면 core/hypothesis_tasks.json 발주(세션 LLM이 7W 서사 작성) → --hypotheses 로 확증 재실행:
              코퍼스 봉인 매칭 · supported/unsupported 보존 · 기각률 0% = 편향 경고 · 성립 요건 + HUB_FLOOR 통과만 허브 후보
@@ -119,10 +119,12 @@ DEPTH = {  # 프리셋 — 정의서 §9
     "deep":     {"probe_seeds": 3, "journeys": 4, "path_limit": 150},
 }
 BRIDGE_FLOOR = 100          # 결합쿼리 성립 최소 월볼륨 (초기값 · manifest 기록)
-# serp 단가 — 키워드당 30크레딧(출력 무과금). 2026-08-28 실측 재확인(이전 10에서 인상) ·
-# 2026-09-16 run 재확인: 8시드 240크레딧. 표시·예산 게이트가 반드시 이 값 하나를 쓴다.
+# serp 단가 — 키워드당(출력 무과금). 표시·예산 게이트가 반드시 이 값 하나를 쓴다.
 # (이전에는 10이 문자열·check()에 흩어져 박혀 있어 --budget이 실제 비용의 1/3만 막았다)
-SERP_COST = 30
+# 2026-11-27: 숫자를 두지 않고 고정 명세(api/spec.py)에서 읽는다 — API v1.0.29 에서 30 → 10 으로 내려갔다.
+# 명세가 바뀌면 spec.py pin 한 번으로 따라온다.
+from api import spec as _spec                            # noqa: E402
+SERP_COST = _spec.rate(_spec.default(), "/serp")[0]
 HUB_FLOOR = 500             # 허브 성립 최소 볼륨합
 FACET_CLASSES = ("C3", "Line", "SpecDimension", "Technology")   # B5 — 허브 후보에서 분리할 온톨로지 클래스
 # ⑥ 허브 볼륨합에서 분리할 일반어 클래스 — 품목·세그먼트·라인·스펙·기술·브랜드·구매형태.
@@ -293,7 +295,7 @@ class Engine:
                 f = self.out / "raw" / f"serp_{q.replace(' ', '_')}.json"
                 if f.exists():
                     continue
-                self.ledger.check(30, f"정본 해석 D1 serp '{q}'")
+                self.ledger.check(SERP_COST, f"정본 해석 D1 serp '{q}'")
                 r = serp.fetch(self.client, q, gl=self.gl)
                 self.ledger.add("serp", {"keyword": q, "stage": "canon_preflight_d1"}, r)
                 f.write_text(json.dumps(r, ensure_ascii=False), encoding="utf8")
@@ -1180,7 +1182,7 @@ class Engine:
         return None
 
     def s2_evidence(self, sense: dict, bridges_sorted: list) -> dict:
-        """S2 · SERP·AIO·PAA 증거 수집 (M2 · grade extracted). 시드당 SERP_COST(30)크레딧 · 인용 원문·수집시각 보존."""
+        """S2 · SERP·AIO·PAA 증거 수집 (M2 · grade extracted). 시드당 SERP_COST 크레딧 · 인용 원문·수집시각 보존."""
         if self.a.no_evidence:
             return {"measured": False, "note": "--no-evidence"}
         seeds = [self.category]
@@ -1356,7 +1358,7 @@ class Engine:
                 if any(tm in txt for tm in c["narrative_terms"]):
                     hits.append({"kind": it.get("kind"), "seed": it.get("seed"), "text": txt.strip()[:180], "collected_at": it.get("collected_at"), "raw_file": f"raw/serp_{self._slug(it.get('seed') or '')}.json"})
             c["serp_hits"] = len(hits); c["serp_examples"] = hits[:3]
-            # 서사 전용 시드 — 품목을 뗀 상황어로 serp만 조회(SERP_COST=30크레딧/시드). 결과 중 품목·기능 어휘가 함께 나오는 항목만 '관련 서사'로 인정
+            # 서사 전용 시드 — 품목을 뗀 상황어로 serp만 조회(SERP_COST 크레딧/시드). 결과 중 품목·기능 어휘가 함께 나오는 항목만 '관련 서사'로 인정
             c["narrative_seed_results"] = []; rel_terms = [catn] + [re.sub(r"\s+", "", x).lower() for x in (sense.get("consumer_terms") or []) + (sense.get("feature_variants") or [])]
             for ns in c.get("narrative_seeds") or []:
                 if not ns_vol.get(ns):
@@ -2148,7 +2150,7 @@ def main():
                     help="product: 품목 run 허브 상속 + 제품 앵커 전이형 여정 (B1) / feature: + 변형·이해형 캔버스·Feature Association (B8)")
     ap.add_argument("--with-context-matrix", action="store_true", help="feature 모드에서도 Context×브랜드 매트릭스 실행(기본 생략)")
     ap.add_argument("--no-evidence", action="store_true", help="S2 serp 증거 수집 생략")
-    ap.add_argument("--serp-max", type=int, default=12, help="S2 serp 시드 상한 (30크레딧/시드 · SERP_COST)")
+    ap.add_argument("--serp-max", type=int, default=12, help="S2 serp 시드 상한 (시드당 SERP_COST 크레딧 · 고정 명세 단가)")
     ap.add_argument("--no-longtail", action="store_true", help="S3 롱테일 수확 생략")
     ap.add_argument("--longtail-limit", type=int, default=100, help="S3 intent_finder limit (시드당 30+2N)")
     ap.add_argument("--longtail-seeds", default="", help="S3 추가 시드(쉼표) — sense.longtail_seeds 와 합집합")

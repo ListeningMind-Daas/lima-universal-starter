@@ -14,9 +14,9 @@ Endpoint · POST /serp
 블록 type (실측 확인) · organic_results · ai_overview · knowledge_panel ·
 people_also_ask_for · people_also_search_for · related_searches · video_results · images
 
-비용 · 키워드당 **30크레딧** (입력 과금만 · 출력 과금 없음).
-  2026-08-28 실측: input_cost 30 × 12시드 = 360. 이전 문서값 10은 2026-08-19 기준이며 그 사이 인상됐다.
-  num=10도 30이다(2026-11-02 40건). 스냅샷이 없는 키워드는 200 OK + data:[] + collected_at null + 0크레딧이다.
+비용 · 키워드당 **10크레딧** (입력 과금만 · 출력 과금 없음 · API v1.0.29 기본값 · 2026-11-27).
+  이력: 2026-08-19 10 → 2026-08-28 실측 30(12시드 = 360) → 2026-11-27 v1.0.29 에서 다시 10. 견적 숫자는 api/spec.py 가 고정 명세에서 읽는다.
+  num 은 과금에 영향이 없다(2026-11-02 40건). 스냅샷이 없는 키워드는 200 OK + data:[] + collected_at null + 0크레딧이다.
 
 주의 · 실시간 크롤이 아니라 저장된 스냅샷을 돌려준다(OpenAPI). 시점은 요청 시각이 아니라 응답의 collected_at 이고,
 처음 부른 키워드가 즉시 수집된 사례는 실측 표본(30건)에서 없었다. 시계열 비교에는 쓸 수 없고,
@@ -40,7 +40,7 @@ def fetch(
 ) -> dict:
     """단일 키워드의 SERP 조회.
 
-    - num · 10 또는 20 (기본 20) · 응답을 바꾸지 않았다(2026-11-02 kr 40쌍 동일) · 과금은 num과 무관하게 키워드당 30
+    - num · 10 또는 20 (기본 20) · 응답을 바꾸지 않았다(2026-11-02 kr 40쌍 동일) · 과금은 num과 무관하게 키워드당 같은 단가
     - device · "mobile"(기본) / "desktop"
     - features · 블록 유형 최대 1개 (문자열 또는 1개짜리 리스트 · None·빈 리스트면 전체 · 2개 이상은 API 가 422)
 
@@ -55,6 +55,41 @@ def fetch(
             raise ValueError("features · 블록 유형은 최대 1개")
         body["features"] = features
     return client.post("serp", body)
+
+
+LIVE_TIMEOUT = 300          # 명세 권장 5분 — 수집에 수십 초~수 분 (2026-11-25 실측 2건: 68초·79초)
+
+
+def fetch_live(
+    client: DaasClient,
+    keyword: str,
+    gl: str = "kr",
+    num: int = 20,
+    features: str | list[str] | None = None,
+    timeout: int = LIVE_TIMEOUT,
+) -> dict:
+    """단일 키워드의 SERP 를 요청 시점에 실시간 수집 · POST /serp/live (API v1.0.29 · 2026-11-27).
+
+    요청·응답 형식은 fetch() 와 같아서 blocks()·organic()·ai_overview_snippets() 등 헬퍼를 그대로 쓴다.
+    다른 점:
+    - collected_at · 저장본의 수집 시각이 아니라 이번 요청의 수집 완료 시각(UTC)
+    - 비용 · 키워드당 30크레딧(운영 명세 v1.0.29 기본값 · 저장본 /serp 는 10) · features 로 블록 하나만 받아도 30 (2026-11-25 실측 2건) ·
+      명세상 결과가 있을 때만 과금하고 수집 실패(500)는 무과금
+    - 재시도하지 않는다 · 실패·시간 초과를 다시 부르면 수집을 한 번 더 돌리고 과금도 다시 붙을 수 있다 — 예외를 그대로 올린다
+    - 같은 키워드를 병렬·반복 호출하지 않는다 · AI 개요는 호출마다 문장·인용 수가 달랐다(3분 간격 2건)
+    - device 는 mobile 고정(명세 const)
+
+    저장본으로 충분하면 fetch() 를 쓴다(0.1초 안팎). 이 함수는 지금 화면이 필요하거나 저장본이 없을 때(collected_at null)만.
+    """
+    if num not in NUM_CHOICES:
+        raise ValueError(f"num must be one of {NUM_CHOICES}")
+    body: dict = {"keyword": keyword, "gl": gl, "num": num, "device": "mobile"}
+    if features:
+        features = [features] if isinstance(features, str) else features
+        if len(features) > 1:
+            raise ValueError("features · 블록 유형은 최대 1개")
+        body["features"] = features
+    return client.post("serp/live", body, retries=0, timeout=timeout)
 
 
 def blocks(response: dict, block_type: str | None = None) -> list[dict]:

@@ -12,6 +12,8 @@
   */keyword_list · intent_finder 입력 = 시드 1 · 출력 = 반환 키워드 수 (limit 100 이면 상한 100)
   keyword_info                   입력 = 키워드 수 · data_type 별 단가 (all · ads_info · ads_metrics)
   serp                           입력 = 키워드 수
+  serp/live                      입력 = 키워드 수 (실시간 수집)
+  keyword_info/status            무료
   trend_finder                   입력 = 시드 1 · 출력 = 반환 이슈 수 (상한 limit)
 
 사용:
@@ -50,8 +52,9 @@ UNITS = {
     "path_finder":                 ("/path_finder",                 lambda k: 1, lambda k: k.get("unique_keywords", 0)),
     "path_finder/keyword_list":    ("/path_finder/keyword_list",    lambda k: 1, lambda k: k.get("returned", k.get("limit", 100))),
     "keyword_info":                ("/keyword_info",                lambda k: k.get("keywords", 0), lambda k: 0),
-    "keyword_info/monthly_volume": ("/keyword_info/monthly_volume", lambda k: 1, lambda k: 0),
+    "keyword_info/monthly_volume": ("/keyword_info/monthly_volume", lambda k: k.get("keywords", 1), lambda k: 0),  # 반환 행당 과금 — 없는 키워드는 미과금, 표기 변형 행은 과금(2026-11-13 실측) · 견적은 요청 수 기준
     "serp":                        ("/serp",                        lambda k: k.get("keywords", 0), lambda k: 0),
+    "serp/live":                   ("/serp/live",                   lambda k: k.get("keywords", 0), lambda k: 0),   # 실시간 수집 · 결과가 있을 때만 과금(명세)
     "trend_finder":                ("/trend_finder/issue_list",     lambda k: 1, lambda k: k.get("returned", k.get("limit", 50))),
 }
 
@@ -69,12 +72,18 @@ PRESETS = {
 }
 
 
+# 단가 스키마가 없는 무료 엔드포인트 — 명세 설명에 '무료'로 적혀 있다 (keyword_info/status · 운영 v1.0.29)
+FREE = {"keyword_info/status"}
+
+
 def cost(tool: str, spec: dict | None = None, **k) -> int:
     """호출 1건의 예상 크레딧 — 단가는 운영 API 명세(spec 생략 시 LM_API_SPEC 기본 출처)."""
     if tool == "cluster_finder" and "nodes" in k:
         raise ValueError("cluster_finder 의 nodes 는 폐기 — unique_keywords(반환 고유 키워드 수)로 넘긴다")
-    if tool not in UNITS:
+    if tool not in UNITS and tool not in FREE:
         raise ValueError(f"unknown tool {tool}")
+    if tool in FREE:
+        return 0
     path, n_in, n_out = UNITS[tool]
     data_type = k.get("data_type", "all") if tool == "keyword_info" else None
     rin, rout = SPEC.rate(spec or SPEC.default(), path, data_type)

@@ -2,9 +2,9 @@
  "schema": "lm-openapi-pin/v2",
  "info": {
   "title": "listeningmind-data-api",
-  "version": "v1.0.15"
+  "version": "v1.0.29"
  },
- "pinned_at": "2026-10-30",
+ "pinned_at": "2026-11-27",
  "source": "https://listeningmind-data-api.ascentlab.io/openapi.json",
  "paths": {
   "/cluster_finder": {
@@ -229,18 +229,20 @@
   },
   "/keyword_info/monthly_volume": {
    "method": "POST",
-   "summary": "ListeningMind 키워드 월별 검색량 조회(단건)",
+   "summary": "ListeningMind 키워드 월별 검색량 조회",
    "params": [
+    "date_from",
+    "date_to",
     "gl",
     "is_skills",
-    "keyword",
+    "keywords",
     "response_format",
     "skill_desc",
     "user_query"
    ],
    "required": [
     "gl",
-    "keyword"
+    "keywords"
    ],
    "costs": {
     "*": {
@@ -264,6 +266,18 @@
      "download_url"
     ]
    }
+  },
+  "/keyword_info/status": {
+   "method": "POST",
+   "summary": "ListeningMind 볼륨 데이터 갱신 상태 조회",
+   "params": [
+    "is_skills",
+    "skill_desc",
+    "user_query"
+   ],
+   "required": [],
+   "costs": {},
+   "cost": {}
   },
   "/path_finder": {
    "method": "POST",
@@ -361,6 +375,51 @@
   "/serp": {
    "method": "POST",
    "summary": "SERP 조회",
+   "params": [
+    "device",
+    "features",
+    "gl",
+    "is_skills",
+    "keyword",
+    "num",
+    "response_format",
+    "skill_desc",
+    "user_query"
+   ],
+   "required": [
+    "gl",
+    "keyword"
+   ],
+   "costs": {
+    "*": {
+     "input_cost": 10,
+     "output_cost": 0,
+     "output_unit": "출력 과금(키워드 1개 기준)"
+    }
+   },
+   "cost": {
+    "input_cost": 10,
+    "output_cost": 0
+   },
+   "enums": {
+    "gl": [
+     "kr",
+     "jp",
+     "us"
+    ],
+    "num": [
+     10,
+     20
+    ],
+    "response_format": [
+     "json",
+     "download_url"
+    ]
+   }
+  },
+  "/serp/live": {
+   "method": "POST",
+   "summary": "실시간 SERP 수집",
    "params": [
     "device",
     "features",

@@ -1,4 +1,4 @@
-# lima-universal 스타터 패키지 (Codex 판) v1.5.0
+# lima-universal 스타터 패키지 (Codex 판) v1.5.1
 
 ListeningMind DaaS 검색 행동 데이터 기반 **마켓 인텔리전스 에이전트 워크스페이스**의 Codex 판입니다.
 Claude Code 판과 같은 스킬 세 개(오케스트레이터 `lima-agents` · 표준 베이스 `listeningmind-universal` · 차트 엔진 `lm-chart`)를

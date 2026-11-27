@@ -19,14 +19,16 @@ def fetch(
     gl: str = "kr",
     volume_threshold: int = 100,
     limit: int = 100,
-    sort: str = "volume_avg",
+    sort: str = "volume_total",
     order: str = "desc",
 ) -> dict:
     """시드 키워드들의 인텐트 유형별 연관 키워드 리스트 조회.
 
     - volume_threshold · 검색량 임계값 (기본 100)
     - limit · 반환 키워드 수 제한 (기본 100 — 비용 비례하므로 보수적으로)
-    - sort · volume_avg(기본) / volume_total / volume_trend / cpc / competition_index
+    - sort · volume_total(기본 · 최근 12개월 합) / volume_avg(최근 3개월 평균) / volume_trend / cpc / competition_index
+      volume_avg 로 정렬하면 limit 안에서 측정 시점이 비수기인 계절 키워드가 서버 단계에서 잘린다.
+      API 자체 기본값은 volume_avg 라 sort 를 빼고 직접 호출하면 그쪽으로 정렬된다.
 
     Returns · 원본 API 응답 dict · {"result", "data", "cost_detail", ...}
     """

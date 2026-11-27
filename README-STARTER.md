@@ -1,4 +1,4 @@
-# lima-universal 스타터 패키지 v1.5.0
+# lima-universal 스타터 패키지 v1.5.1
 
 ListeningMind DaaS 검색 행동 데이터 기반 **마켓 인텔리전스 에이전트 워크스페이스**입니다.
 산업 무관 표준 스킬(listeningmind-universal)과 오케스트레이터(lima-agents)로 구성되어
@@ -103,6 +103,16 @@ python3 ../lima-agents/scripts/check_lexicon.py file ../../../99_Scratch/sample.
 
 ## 변경 이력
 
+- **v1.5.1 (2026-11-27)** — 운영 API v1.0.29 반영(새 엔드포인트 2개 · serp 단가 · 월별 검색량 배치)
+  - **새 엔드포인트** — `POST /serp/live`(요청 시점 SERP 실시간 수집 · 응답 형식은 `/serp`와 같음 · 키워드당 30 · 수십 초~수 분 · 래퍼 `serp.fetch_live()`는 재시도하지 않는다)와
+    `POST /keyword_info/status`(검색량 데이터의 기준월 · 무료 · 래퍼 `keyword_info.fetch_status()`). 커넥터 명세·개요 표·견적 도구(`credit_estimate.py`)에 등록
+  - **`POST /keyword_info/monthly_volume`이 배치로 바뀌었다** — 본문이 `keyword`(문자열 1개)에서 `keywords`(배열 · 최대 1,000개)로 바뀌고 `date_from`·`date_to`(YYYY-MM · 최대 48개월)가 생겼다.
+    v1.5의 단건 호출은 지금 API에서 거절된다 — `keyword_info.fetch_monthly_volume()`은 문자열 하나를 줘도 배열로 보낸다. 과금은 반환된 행당 1(없는 키워드는 미과금, 표기 변형 행은 과금)
+  - **serp 단가 30 → 10 / 키워드** — 고정 명세(`api/openapi-prod-pinned.json`)를 v1.0.29로 갱신. CEP Finder 엔진의 serp 예산(`SERP_COST`)은 숫자를 두지 않고 고정 명세에서 읽는다
+    (v1.5의 상수 30은 v1.0.29 단가 기준으로 예산을 3배로 잡는다). CLAUDE.md·AGENTS.md 단가표·수요 파이프라인 설명도 10으로
+  - `intent_finder.fetch()` 기본 정렬을 `volume_total`(최근 12개월 합)로 — `volume_avg`는 최근 3개월 평균이라 비수기인 계절 키워드가 `limit` 안에서 잘린다. `keyword-info-api.md`의 `volume_avg` 정의도 '최근 3개월 평균'으로 정정
+  - 커넥터 명세 보강 — `cluster_finder`·`intent_finder`·`path_finder`의 `limit` 의미와 범위(cluster_finder·intent_finder 1~10,000 · path_finder 1~1,000), `path_finder` 전이는 경로 수가 아니라 고유 이음으로 센다 · 견적 상한 `limit × 1.6`, `intent_finder` 반환 0건 무과금
+  - 지난 명세 보관에 v1.0.15·v1.0.20 추가
 - **v1.5 (2026-11-04)** — 운영 API v1.0.15 · serp 저장 스냅샷 규칙 · AI 요약 파서 수정 · 차트 엔진 동봉
   - **API 명세 기준을 운영 OpenAPI v1.0.15로** — `POST /keyword_info/monthly_volume`(키워드 1개의 월별 검색량) 정식 등록 · 공통 선택 파라미터 `skill_desc` 문서화.
     고정 사본(`lima-agents/api/openapi-prod-pinned.json`)과 견적표도 함께 갱신
@@ -189,4 +199,4 @@ python3 ../lima-agents/scripts/check_lexicon.py file ../../../99_Scratch/sample.
   ③ 워크스페이스 골격(00_Context 온보딩 · 90_Output · 99_Scratch) + 운영 규칙 정본(CLAUDE.md)
 
 ---
-v1.5.0 · Ascent AI · 문의: ListeningMind DaaS 담당자
+v1.5.1 · Ascent AI · 문의: ListeningMind DaaS 담당자

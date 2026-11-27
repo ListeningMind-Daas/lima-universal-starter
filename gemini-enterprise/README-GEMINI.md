@@ -1,4 +1,4 @@
-# lima-universal 리서치 에이전트 (Gemini Enterprise 판) v1.5.0
+# lima-universal 리서치 에이전트 (Gemini Enterprise 판) v1.5.1
 
 ListeningMind DaaS 검색 행동 데이터로 시장·브랜드·상품·검색 여정 질문에 답하는 에이전트를
 **귀사 GCP 프로젝트**의 Agent Engine 에 배포하고 Gemini Enterprise 에 등록하는 패키지입니다.

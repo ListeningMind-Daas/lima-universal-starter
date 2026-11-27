@@ -295,7 +295,7 @@ async def path_finder(keyword: str, gl: str = "kr", limit: int = 30, time_point:
 
 
 async def serp(keyword: str, gl: str = "kr", device: str = "mobile", confirm: bool = False, tool_context=None) -> dict:
-    """키워드 1개의 구글 검색결과 화면 — 상위 사이트·연관 질문·연관 검색어·AI 개요 요약. 키워드당 30크레딧.
+    """키워드 1개의 구글 검색결과 화면 — 상위 사이트·연관 질문·연관 검색어·AI 개요 요약. 키워드당 10크레딧(API v1.0.29).
 
     Args:
         keyword: 키워드 1개

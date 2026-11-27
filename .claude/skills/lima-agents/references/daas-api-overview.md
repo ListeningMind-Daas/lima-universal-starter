@@ -8,8 +8,9 @@
 > **최상위 근거** · 공개 API 문서 https://listeningmind-data-api.ascentlab.io/ — 단가·파라미터·응답 필드는 **항상 여기를 먼저 대조한다.**
 > 이 문서는 그 스냅샷이며, 문서와 어긋나면 **문서가 이긴다.**
 >
-> **스냅샷 기준** · `listeningmind-data-api` 운영 **v1.0.15** · 고정 사본 **2026-10-30** · 운영 명세와 일치 재확인 **2026-11-04** (serp 단가는 2026-08-28 실측으로 30/kw 갱신).
-> 직전 스냅샷(v1.0.13) 대비 `POST /keyword_info/monthly_volume`이 추가됐고, 모든 POST 에 선택 파라미터 `skill_desc`가 추가됐다. 기존 엔드포인트의 필수값·선택지·단가 기본값은 변경 없음.
+> **스냅샷 기준** · `listeningmind-data-api` 운영 **v1.0.29** · 확인일 **2026-11-27**.
+> 직전 스냅샷(v1.0.20 · 2026-11-13) 대비 `POST /keyword_info/status`(검색량 기준월 · 무료)와 `POST /serp/live`(실시간 수집 · 30/키워드)가 추가됐고, `POST /serp` 단가가 30 → **10** / 키워드로 내려갔다. 그 밖의 파라미터·필수값 변경 없음.
+> 그 전 스냅샷(v1.0.15) 대비 `POST /keyword_info/monthly_volume`이 단건(`keyword`)에서 배치(`keywords` · 최대 1,000개)로 바뀌고 `date_from`·`date_to`가 추가됐다.
 > API 스펙이 갱신되면 이 절과 커넥터 명세 6종의 파라미터·단가를 재대조한다.
 
 모든 엔드포인트에 `api/` 래퍼가 있다. **호출 원칙은 보수적** — 표준 파이프라인은
@@ -19,22 +20,24 @@ cluster_finder + keyword_info 2개로 완결하고, 나머지는 해당 분석�
 |---|---|---|---|
 | POST /cluster_finder | 시드 키워드의 관계 그래프·커뮤니티 | `cluster_finder.fetch` | ✅ 표준 파이프라인 |
 | POST /keyword_info | 키워드별 검색량·인텐트·인구·SERP·48개월 시계열 | `keyword_info.fetch_all` | ✅ 표준 파이프라인 (data_type=all) |
-| POST /keyword_info/monthly_volume | 키워드 1개의 월별 검색량만 (경량 · DaaS 키 전용) | `keyword_info.fetch_monthly_volume` | 시계열 하나만 빠르게 볼 때 (여러 키워드는 keyword_info `ads_info` 배치) |
+| POST /keyword_info/monthly_volume | 키워드 최대 1,000개의 월별 검색량만 · 기간 지정(`date_from`·`date_to`) (경량 · DaaS 키 전용) | `keyword_info.fetch_monthly_volume` | 시계열만 필요하거나 특정 기간의 월만 필요할 때 (`ads_metrics`까지 필요하면 `keyword_info`의 `ads_info`) |
+| POST /keyword_info/status | 검색량 데이터의 기준월(구글·네이버)과 확인 시각 (무료 · DaaS 키 전용) | `keyword_info.fetch_status` | 새 달 데이터가 들어왔는지 확인할 때 (월 갱신 감지 · 0크레딧) |
 | POST /cluster_finder/keyword_list | 관계 그래프의 키워드 리스트만 (경량) | `cluster_finder.fetch_keyword_list` | 그래프 구조 불필요 시 |
 | POST /intent_finder/keyword_list | 인텐트 유형별 키워드 리스트 확장 | `intent_finder.fetch` | keyword_info의 intents 벡터로 부족할 때만 |
 | POST /path_finder | 검색 여정 (A→B→C 시퀀스) | `path_finder.fetch` | 여정 분석이 필요한 질문에만 (키워드 수 비례 과금) |
 | POST /path_finder/keyword_list | 여정 등장 키워드 리스트만 (경량) | `path_finder.fetch_keyword_list` | 경로 시퀀스 불필요 시 |
 | POST /serp | 키워드의 SERP 결과 조회 (블록 단위) | `serp.fetch` | 검색결과 화면 자체가 필요할 때 (keyword_info의 `features`로 부족한 경우) |
+| POST /serp/live | 요청 시점에 SERP 실시간 수집 (형식은 /serp 와 같음 · 수십 초~수 분) | `serp.fetch_live` | 저장본이 없거나(collected_at null) 지금 화면이 필요할 때만 (재시도 없음 · 30/키워드) |
 | POST /trend_finder/issue_list | 시드 주변 최근 급부상 이슈 (요약·핵심 구문·출처·이슈 점수) | `trend_finder.fetch` · `widen` | 급등 원인·최근 이슈·단발/지속 판정이 결론에 필요할 때 (검색량만 필요하면 keyword_info) |
 | GET /usage/summary | 기간별 사용량 집계 (정산·리포트) | `usage.summary` | 과금 리포트 작성 시 |
 
 연관 키워드 묶음의 AIO 원문은 `*/keyword_list`·`trend_finder` 확장 → 유니크 목록 → `serp` 로 모은다 ([[references/serp-api.md]]).
 
-**공통 파라미터 (v1.0.x 부터 · POST)** · `user_query`(이 호출을 유발한 사용자 질의 원문 — 선택, 이력에 적재) ·
+**공통 파라미터 (v1.0.x 부터 · 모든 POST)** · `user_query`(이 호출을 유발한 사용자 질의 원문 — 선택, 이력에 적재) ·
 `is_skills`(스킬 경유 호출 여부 — 선택·기본 false, 이력에 적재 · v1.0.13~. `DaasClient.post()` 가 body 에 없으면 `true` 를 넣는다) ·
 `skill_desc`(스킬 경유 호출일 때 실행 중인 스킬 정보 — 선택 · JSON 객체 · 명세상 MCP 경유 호출용, 이력에 적재 · v1.0.15 고정 사본부터. `DaasClient` 는 보내지 않는다) ·
 `response_format`(`json` 기본 / `download_url` — 대용량 조회 시 `data` 대신 `download` 메타(주소·sha256·크기)만 오고 파일로
-내려받는다 · `DaasClient.download(response)` 가 sha256 대조까지 한다). `cluster_finder/keyword_list`·`path_finder/keyword_list` 는 `user_query` 를 받지 않는다.
+내려받는다 · `DaasClient.download(response)` 가 sha256 대조까지 한다). `*/keyword_list` 경량 계열은 `user_query` 를 받지 않는다.
 
 ### 커넥터별 상세 명세
 
@@ -62,11 +65,13 @@ cluster_finder + keyword_info 2개로 완결하고, 나머지는 해당 분석�
 **크레딧 참고** (읽기용 요약 — 견적 숫자는 `api/spec.py` 가 운영 명세에서 읽는다. 둘이 다르면 명세가 이긴다)
 - cluster_finder · **150 + 반환 고유 키워드 수 × 50** (관계 수가 아님 · 실측 18건 전수 검증)
 - keyword_info · data_type별 차등 — `ads_metrics`·`ads_info` 1 / kw · `all` 10 / kw (인텐트·인구·시계열 필요 분석은 all, 볼륨 사전 검증은 ads_metrics)
-- keyword_info/monthly_volume · **1 / 키워드** (단건 · 출력 과금 없음 · 2026-11-04 1건 실측)
+- keyword_info/monthly_volume · **1 / 반환된 행** (배치 최대 1,000개 · 데이터 없는 키워드는 빠지고 과금 없음 · 표기 변형 행은 과금 — 요청 1개에 3행이면 3 · 출력 과금 없음 · 2026-11-13 실측 2건)
 - path_finder · **50 + 40 × 경로에 등장한 고유 키워드 수** (경로 수가 아님 · 실측 5,050·6,770·8,410) — 래퍼 기본 limit=150으로 통제
 - intent_finder · **30 + 2 × 반환 키워드 수** (실측 42건 전수 일치 · limit=100 도달 시 230)
 - `*/keyword_list` 경량 계열(cluster_finder·path_finder·intent_finder) · **30 + 반환 키워드 × 2** 공통
-- serp · **30 / 키워드** (입력 과금만 · 출력 과금 없음 · 2026-08-28 실측 — 2026-08-19의 10에서 인상 · 스냅샷이 없는 빈 응답은 0 — 2026-11-02 실측)
+- serp · **10 / 키워드** (입력 과금만 · 출력 과금 없음 · 운영 명세 v1.0.29 기본값 · 2026-11-27 — 이력: 08-19 10 → 08-28 30 → 11-27 다시 10 · 스냅샷이 없는 빈 응답은 0)
+- serp/live · **30 / 키워드** (실시간 수집 · 결과가 있을 때만 과금, 수집 실패는 무과금(명세) · features 로 블록 하나만 받아도 30)
+- keyword_info/status · **무료** (0크레딧)
 - trend_finder · **50 (시드당) + 2 × 반환 이슈 항목 수** (2026-09-23 실측 · limit=3 → 56) — `limit` 으로 통제, 래퍼 기본 50
 - usage/summary · 조회 전용 (사용량 정산)
 

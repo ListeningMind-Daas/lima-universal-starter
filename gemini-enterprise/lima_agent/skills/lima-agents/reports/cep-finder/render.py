@@ -520,7 +520,7 @@ def evidence_block(HG: dict, labels: dict) -> str:
         paa = "".join(f'<li><code>{q["q"]}</code> <span class="veil" style="display:inline">[{q["seed"]}]</span></li>' for q in (ev.get("paa") or [])[:12]) or "<li>없음</li>"
         rel = " · ".join(f'<code>{x["q"]}</code>' for x in (ev.get("related") or [])[:16]) or "없음"
         out.append('<div class="sl" style="margin-top:18px">검색결과 화면·AI 검색 요약에서 발췌한 근거 <span class="badge b-derived">EXTRACTED</span></div>')
-        out.append(f'<p class="sub">serp {ev.get("n_seeds", 0)}시드(30크레딧/시드) · AI Overview 노출 <b>{a}/{n}</b>{empty} · PAA {len(ev.get("paa") or [])} · 연관검색 {len(ev.get("related") or [])} · 증거 {ev.get("items_n", 0)}건 — 저장된 스냅샷(실시간 아님), 가설의 원천이지 소비자 발화가 아님</p>')
+        out.append(f'<p class="sub">serp {ev.get("n_seeds", 0)}시드 · AI Overview 노출 <b>{a}/{n}</b>{empty} · PAA {len(ev.get("paa") or [])} · 연관검색 {len(ev.get("related") or [])} · 증거 {ev.get("items_n", 0)}건 — 저장된 스냅샷(실시간 아님), 가설의 원천이지 소비자 발화가 아님</p>')
         out.append(f'<div class="hgrid"><div><div class="sl">PAA(사람들이 함께 묻는 질문)</div><ul class="note" style="padding-left:18px;margin-top:4px">{paa}</ul></div><div><div class="sl">연관검색</div><p class="note" style="margin-top:4px">{rel}</p></div></div>')
     elif ev.get("n_empty"):
         out.append(f'<p class="sub">serp 저장본 없음 — 빈 응답 {ev["n_empty"]}건(데이터 공백) · AI Overview 노출은 판단하지 않았다</p>')
